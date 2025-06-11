@@ -10,38 +10,56 @@ interface Message {
   language?: string;
 }
 
-const ChatInterface: React.FC = () => {
+interface ChatInterfaceProps {
+  selectedLanguage: string;
+}
+
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedLanguage }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'नमस्ते! मैं आपका AI वकील हूँ। मैं आपकी कानूनी समस्याओं में मदद कर सकता हूँ। आप मुझसे कोई भी कानूनी सवाल पूछ सकते हैं।',
+      text: 'Hello! I am your AI legal assistant. I can help you with your legal queries. Please ask me any legal question.',
       sender: 'bot',
       timestamp: new Date(),
-      language: 'hi'
+      language: 'en'
     }
   ]);
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('hi');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const languages = [
-    { code: 'hi', name: 'हिंदी', flag: '🇮🇳' },
-    { code: 'en', name: 'English', flag: '🇺🇸' },
-    { code: 'bn', name: 'বাংলা', flag: '🇧🇩' },
-    { code: 'te', name: 'తెలుగు', flag: '🇮🇳' },
-    { code: 'ta', name: 'தமிழ்', flag: '🇮🇳' },
-    { code: 'mr', name: 'मराठी', flag: '🇮🇳' },
-    { code: 'gu', name: 'ગુજરાતી', flag: '🇮🇳' },
-    { code: 'kn', name: 'ಕನ್ನಡ', flag: '🇮🇳' },
+    { code: 'en', name: 'English' },
+    { code: 'hi', name: 'हिन्दी' },
+    { code: 'bn', name: 'বাংলা' },
+    { code: 'te', name: 'తెలుగు' },
+    { code: 'ta', name: 'தமிழ்' },
+    { code: 'mr', name: 'मराठी' },
+    { code: 'gu', name: 'ગુજરાતી' },
+    { code: 'kn', name: 'ಕನ್ನಡ' },
+    { code: 'ml', name: 'മലയാളം' },
+    { code: 'or', name: 'ଓଡ଼ିଆ' },
+    { code: 'pa', name: 'ਪੰਜਾਬੀ' },
+    { code: 'as', name: 'অসমীয়া' },
+    { code: 'sa', name: 'संस्कृतम्' },
+    { code: 'ks', name: 'कॉशुर' },
+    { code: 'ne', name: 'नेपाली' },
+    { code: 'sd', name: 'सिन्धी' },
+    { code: 'doi', name: 'डोगरी' },
+    { code: 'mni', name: 'ꯃꯤꯇꯩꯂꯣꯟ' },
+    { code: 'sat', name: 'ᱥᱟᱱᱛᱟᱲᱤ' },
+    { code: 'ur', name: 'اُردُو' },
+    { code: 'brx', name: 'बड़ो' },
+    { code: 'kok', name: 'कोंकणी' },
+    { code: 'lus', name: 'Mizo ṭawng' }
   ];
 
   const sampleResponses = [
-    'इस मामले में, भारतीय संविधान के अनुच्छेद 21 के तहत आपको जीवन और व्यक्तिगत स्वतंत्रता का अधिकार है। आप इस आधार पर अपील कर सकते हैं।',
-    'आपके मामले के लिए मैं निम्नलिखित कानूनी कार्रवाई की सलाह देता हूं: 1) FIR दर्ज कराएं 2) कानूनी दस्तावेज तैयार करें 3) न्यायालय में याचिका दायर करें।',
-    'यह एक जटिल कानूनी मामला है। आपको एक अनुभवी वकील से सलाह लेनी चाहिए। मैं आपको प्रारंभिक जानकारी दे सकता हूं।',
-    'आपके दस्तावेज के अनुसार, यह मामला भारतीय दंड संहिता की धारा 420 के तहत आता है। आप धोखाधड़ी के लिए मुकदमा दायर कर सकते हैं।'
+    'In this case, Article 21 of the Indian Constitution gives you the right to life and personal liberty. You can appeal on this basis.',
+    'For your case, I recommend the following legal actions: 1) File an FIR 2) Prepare legal documents 3) File a petition in court.',
+    'This is a complex legal matter. You should consult an experienced lawyer. I can provide you with initial information.',
+    'According to your document, this case falls under Section 420 of the Indian Penal Code. You can file a case for fraud.'
   ];
 
   useEffect(() => {
@@ -84,7 +102,7 @@ const ChatInterface: React.FC = () => {
     if (!isRecording) {
       setTimeout(() => {
         setIsRecording(false);
-        setInputText("मैं अपनी संपत्ति के मामले में मदद चाहता हूं");
+        setInputText("I need help with my property matter");
       }, 2000);
     }
   };
@@ -128,17 +146,18 @@ const ChatInterface: React.FC = () => {
               </div>
             </div>
             
-            {/* Language Selector */}
+            {/* Language Selector (read-only) */}
             <div className="flex items-center space-x-3">
               <Languages className="w-5 h-5 text-gray-500" />
               <select
                 value={selectedLanguage}
-                onChange={(e) => setSelectedLanguage(e.target.value)}
-                className="bg-white/80 backdrop-blur-sm rounded-xl px-4 py-2 text-sm border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled
+                className="bg-white/80 backdrop-blur-sm rounded-xl px-4 py-2 text-sm border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-not-allowed"
+                title="Change language from the top bar"
               >
                 {languages.map((lang) => (
                   <option key={lang.code} value={lang.code}>
-                    {lang.flag} {lang.name}
+                    {lang.name}
                   </option>
                 ))}
               </select>
@@ -206,7 +225,7 @@ const ChatInterface: React.FC = () => {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                placeholder="अपना कानूनी सवाल यहाँ लिखें..."
+                placeholder="Type your legal question here..."
                 className="w-full px-6 py-4 pr-14 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 backdrop-blur-sm text-gray-900 placeholder-gray-500"
               />
               <button
@@ -235,17 +254,17 @@ const ChatInterface: React.FC = () => {
           {/* Quick Actions */}
           <div className="mt-6 flex flex-wrap gap-3">
             {[
-              'संपत्ति के मामले',
-              'विवाह कानून',
-              'व्यापारिक विवाद',
-              'दस्तावेज़ की जांच',
-              'अदालती प्रक्रिया'
+              'Property matters',
+              'Marriage law',
+              'Business disputes',
+              'Document review',
+              'Court procedure'
             ].map((suggestion, index) => (
               <motion.button
                 key={index}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setInputText(suggestion + ' के बारे में बताएं')}
+                onClick={() => setInputText(`Tell me about ${suggestion.toLowerCase()}`)}
                 className="px-4 py-2 bg-white/80 backdrop-blur-sm text-gray-700 rounded-xl text-sm hover:bg-blue-50 hover:text-blue-600 transition-all duration-300 border border-gray-200 shadow-sm"
               >
                 {suggestion}

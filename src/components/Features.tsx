@@ -13,7 +13,11 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const Features: React.FC = () => {
+interface FeaturesProps {
+  selectedLanguage: string;
+}
+
+const Features: React.FC<FeaturesProps> = ({selectedLanguage}) => {
   const features = [
     {
       icon: MessageSquare,

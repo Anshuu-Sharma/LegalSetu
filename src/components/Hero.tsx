@@ -4,9 +4,10 @@ import { motion } from 'framer-motion';
 
 interface HeroProps {
   setActiveSection: (section: string) => void;
+  selectedLanguage: string;
 }
 
-const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
+const Hero: React.FC<HeroProps> = ({ setActiveSection, selectedLanguage }) => {
   return (
     <section className="relative min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 overflow-hidden pt-20">
       {/* Background Elements */}

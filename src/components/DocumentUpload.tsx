@@ -12,38 +12,58 @@ interface Document {
   analysis?: string;
 }
 
-const DocumentUpload: React.FC = () => {
+interface DocumentUploadProps {
+  selectedLanguage: string;
+}
+
+const DocumentUpload: React.FC<DocumentUploadProps> = ({ selectedLanguage }) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [dragActive, setDragActive] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('hi');
   const [analysisView, setAnalysisView] = useState<string | null>(null);
 
   const languages = [
-    { code: 'hi', name: 'हिंदी' },
     { code: 'en', name: 'English' },
+    { code: 'hi', name: 'हिन्दी' },
     { code: 'bn', name: 'বাংলা' },
     { code: 'te', name: 'తెలుగు' },
     { code: 'ta', name: 'தமிழ்' },
     { code: 'mr', name: 'मराठी' },
+    { code: 'gu', name: 'ગુજરાતી' },
+    { code: 'kn', name: 'ಕನ್ನಡ' },
+    { code: 'ml', name: 'മലയാളം' },
+    { code: 'or', name: 'ଓଡ଼ିଆ' },
+    { code: 'pa', name: 'ਪੰਜਾਬੀ' },
+    { code: 'as', name: 'অসমীয়া' },
+    { code: 'sa', name: 'संस्कृतम्' },
+    { code: 'ks', name: 'कॉशुर' },
+    { code: 'ne', name: 'नेपाली' },
+    { code: 'sd', name: 'सिन्धी' },
+    { code: 'doi', name: 'डोगरी' },
+    { code: 'mni', name: 'ꯃꯤꯇꯩꯂꯣꯟ' },
+    { code: 'sat', name: 'ᱥᱟᱱᱛᱟᱲᱤ' },
+    { code: 'ur', name: 'اُردُو' },
+    { code: 'brx', name: 'बड़ो' },
+    { code: 'kok', name: 'कोंकणी' },
+    { code: 'lus', name: 'Mizo ṭawng' }
   ];
 
-  const sampleAnalysis = `यह दस्तावेज़ एक किराया समझौता है जो निम्नलिखित मुख्य बिंदुओं को शामिल करता है:
+  const sampleAnalysis = `This document is a rental agreement containing the following key points:
 
-**मुख्य शर्तें:**
-• मासिक किराया: ₹25,000
-• सिक्योरिटी डिपॉज़िट: ₹50,000  
-• किराया की अवधि: 11 महीने
-• किराया बढ़ोतरी: सालाना 10%
+**Key Terms:**
+• Monthly Rent: ₹25,000
+• Security Deposit: ₹50,000  
+• Rental Period: 11 months
+• Rent Increase: 10% annually
 
-**कानूनी सलाह:**
-1. यह समझौता भारतीय किराया नियंत्रण अधिनियम के अनुसार वैध है
-2. सभी आवश्यक क्लॉज़ मौजूद हैं
-3. सिक्योरिटी डिपॉज़िट उचित सीमा में है
+**Legal Advice:**
+1. This agreement is valid under the Indian Rent Control Act.
+2. All essential clauses are present.
+3. Security deposit is within reasonable limits.
 
-**अगले कदम:**
-• दोनों पक्षों के हस्ताक्षर आवश्यक
-• नोटरी की मुहर लगवाएं
-• स्टाम्प पेपर पर प्रिंट कराएं`;
+**Next Steps:**
+• Both parties must sign.
+• Get notarized.
+• Print on stamp paper.`;
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -108,10 +128,10 @@ const DocumentUpload: React.FC = () => {
 
   const getStatusText = (status: Document['status']) => {
     switch (status) {
-      case 'analyzing': return 'विश्लेषण चल रहा है...';
-      case 'completed': return 'विश्लेषण पूर्ण';
-      case 'error': return 'त्रुटि';
-      default: return 'अज्ञात';
+      case 'analyzing': return 'Analyzing...';
+      case 'completed': return 'Analysis Complete';
+      case 'error': return 'Error';
+      default: return 'Unknown';
     }
   };
 
@@ -121,11 +141,10 @@ const DocumentUpload: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            दस्तावेज़ विश्लेषण
+            Document Analysis
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            अपने कानूनी दस्तावेज़ अपलोड करें और AI-powered विश्लेषण प्राप्त करें। 
-            हम आपके दस्तावेज़ों को सुरक्षित रूप से संसाधित करते हैं।
+            Upload your legal documents and get AI-powered analysis. We process your documents securely.
           </p>
         </div>
 
@@ -134,13 +153,14 @@ const DocumentUpload: React.FC = () => {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">भाषा चुनें</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Select Language</h3>
                 <Languages className="w-5 h-5 text-gray-500" />
               </div>
               <select
                 value={selectedLanguage}
-                onChange={(e) => setSelectedLanguage(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 bg-gray-100 cursor-not-allowed"
+                title="Change language from the top bar"
               >
                 {languages.map((lang) => (
                   <option key={lang.code} value={lang.code}>
@@ -165,10 +185,10 @@ const DocumentUpload: React.FC = () => {
               <div className="text-center">
                 <Upload className="w-16 h-16 text-primary-600 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  दस्तावेज़ अपलोड करें
+                  Upload Document
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  फ़ाइल को यहाँ खींचें या क्लिक करके चुनें
+                  Drag and drop your file here or click to select
                 </p>
                 <input
                   type="file"
@@ -182,21 +202,20 @@ const DocumentUpload: React.FC = () => {
                   htmlFor="fileInput"
                   className="inline-block bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors cursor-pointer"
                 >
-                  फ़ाइल चुनें
+                  Choose File
                 </label>
                 <p className="text-xs text-gray-500 mt-2">
-                  PDF, DOC, DOCX, TXT, JPG, PNG (अधिकतम 10MB)
+                  PDF, DOC, DOCX, TXT, JPG, PNG (max 10MB)
                 </p>
               </div>
             </motion.div>
           </div>
-
           {/* Documents List */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-xl shadow-lg">
               <div className="p-6 border-b border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  अपलोड किए गए दस्तावेज़ ({documents.length})
+                  Uploaded Documents ({documents.length})
                 </h3>
               </div>
               
@@ -205,7 +224,7 @@ const DocumentUpload: React.FC = () => {
                   {documents.length === 0 ? (
                     <div className="text-center py-12">
                       <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500">कोई दस्तावेज़ अपलोड नहीं किया गया</p>
+                      <p className="text-gray-500">No documents uploaded</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -225,7 +244,7 @@ const DocumentUpload: React.FC = () => {
                                   {doc.name}
                                 </h4>
                                 <p className="text-xs text-gray-500">
-                                  {doc.size} • {doc.uploadDate.toLocaleDateString('hi-IN')}
+                                  {doc.size} • {doc.uploadDate.toLocaleDateString('en-IN')}
                                 </p>
                               </div>
                             </div>
@@ -239,7 +258,7 @@ const DocumentUpload: React.FC = () => {
                                 <button
                                   onClick={() => setAnalysisView(doc.id)}
                                   className="p-2 text-gray-500 hover:text-primary-600 transition-colors"
-                                  title="विश्लेषण देखें"
+                                  title="View Analysis"
                                 >
                                   <Eye className="w-4 h-4" />
                                 </button>
@@ -248,7 +267,7 @@ const DocumentUpload: React.FC = () => {
                               <button
                                 onClick={() => deleteDocument(doc.id)}
                                 className="p-2 text-gray-500 hover:text-red-600 transition-colors"
-                                title="हटाएं"
+                                title="Delete"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -266,7 +285,7 @@ const DocumentUpload: React.FC = () => {
                           {doc.status === 'completed' && (
                             <div className="mt-3 flex items-center text-green-600">
                               <CheckCircle className="w-4 h-4 mr-2" />
-                              <span className="text-sm">विश्लेषण तैयार है</span>
+                              <span className="text-sm">Analysis ready</span>
                             </div>
                           )}
                         </motion.div>
@@ -295,7 +314,7 @@ const DocumentUpload: React.FC = () => {
                 className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
               >
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                  <h3 className="text-xl font-semibold text-gray-900">दस्तावेज़ विश्लेषण</h3>
+                  <h3 className="text-xl font-semibold text-gray-900">Document Analysis</h3>
                   <button
                     onClick={() => setAnalysisView(null)}
                     className="text-gray-500 hover:text-gray-700"
@@ -317,11 +336,11 @@ const DocumentUpload: React.FC = () => {
                     onClick={() => setAnalysisView(null)}
                     className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                   >
-                    बंद करें
+                    Close
                   </button>
                   <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center">
                     <Download className="w-4 h-4 mr-2" />
-                    डाउनलोड करें
+                    Download
                   </button>
                 </div>
               </motion.div>

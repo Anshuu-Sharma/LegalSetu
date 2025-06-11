@@ -1,14 +1,71 @@
-import React from 'react';
-import { Scale, Menu, X, Sparkles } from 'lucide-react';
+import React, { useRef, useEffect } from 'react';
+import { Scale, Menu, X, Sparkles, ChevronDown, Globe } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface HeaderProps {
   activeSection: string;
   setActiveSection: (section: string) => void;
+  selectedLanguage: string;
+  onLanguageChange: (language: string) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ activeSection, setActiveSection }) => {
+const languages = [
+  { code: 'en', name: 'English' },
+  { code: 'hi', name: 'हिन्दी' },
+  { code: 'bn', name: 'বাংলা' },
+  { code: 'te', name: 'తెలుగు' },
+  { code: 'ta', name: 'தமிழ்' },
+  { code: 'mr', name: 'मराठी' },
+  { code: 'gu', name: 'ગુજરાતી' },
+  { code: 'kn', name: 'ಕನ್ನಡ' },
+  { code: 'ml', name: 'മലയാളം' },
+  { code: 'or', name: 'ଓଡ଼ିଆ' },
+  { code: 'pa', name: 'ਪੰਜਾਬੀ' },
+  { code: 'as', name: 'অসমীয়া' },
+  { code: 'sa', name: 'संस्कृतम्' },
+  { code: 'ks', name: 'कॉशुर' },
+  { code: 'ne', name: 'नेपाली' },
+  { code: 'sd', name: 'सिन्धी' },
+  { code: 'doi', name: 'डोगरी' },
+  { code: 'mni', name: 'ꯃꯤꯇꯩꯂꯣꯟ' },
+  { code: 'sat', name: 'ᱥᱟᱱᱛᱟᱲᱤ' },
+  { code: 'ur', name: 'اُردُو' },
+  { code: 'brx', name: 'बड़ो' },
+  { code: 'kok', name: 'कोंकणी' },
+  { code: 'lus', name: 'Mizo ṭawng' }
+];
+
+const Header: React.FC<HeaderProps> = ({
+  activeSection,
+  setActiveSection,
+  selectedLanguage,
+  onLanguageChange
+}) => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [isLanguageOpen, setIsLanguageOpen] = React.useState(false);
+
+  // Ref for the language dropdown
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown if clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsLanguageOpen(false);
+      }
+    }
+    if (isLanguageOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isLanguageOpen]);
 
   const navigation = [
     { name: 'Home', id: 'home' },
@@ -19,7 +76,7 @@ const Header: React.FC<HeaderProps> = ({ activeSection, setActiveSection }) => {
   ];
 
   return (
-    <motion.header 
+    <motion.header
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm"
@@ -72,10 +129,44 @@ const Header: React.FC<HeaderProps> = ({ activeSection, setActiveSection }) => {
                 )}
               </motion.button>
             ))}
-            <motion.button 
+
+            {/* Desktop Language Dropdown with outside click close */}
+            <div className="relative ml-4" ref={dropdownRef}>
+              <button
+                onClick={() => setIsLanguageOpen(!isLanguageOpen)}
+                className="flex items-center px-4 py-2 text-gray-600 hover:text-blue-600 rounded-xl transition-colors font-medium"
+                type="button"
+              >
+                <Globe className="w-5 h-5 mr-2" />
+                {languages.find(lang => lang.code === selectedLanguage)?.name}
+                <ChevronDown className="w-4 h-4 ml-2" />
+              </button>
+              {isLanguageOpen && (
+                <div className="absolute right-0 mt-2 w-56 max-h-[70vh] overflow-y-auto bg-white rounded-xl shadow-lg border border-gray-200/50 z-50">
+                  {languages.map((lang) => (
+                    <button
+                      key={lang.code}
+                      onClick={() => {
+                        onLanguageChange(lang.code);
+                        setIsLanguageOpen(false);
+                      }}
+                      className={`w-full px-4 py-3 text-sm text-left ${
+                        selectedLanguage === lang.code
+                          ? 'bg-blue-50 text-blue-600'
+                          : 'text-gray-600 hover:bg-gray-50'
+                      } transition-colors rounded-xl`}
+                    >
+                      {lang.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="ml-4 bg-gradient-to-r from-blue-600 to-purple-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              className="ml-2 bg-gradient-to-r from-blue-600 to-purple-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
             >
               Get Started
             </motion.button>
@@ -117,6 +208,23 @@ const Header: React.FC<HeaderProps> = ({ activeSection, setActiveSection }) => {
                   {item.name}
                 </button>
               ))}
+              <div className="px-4 py-3">
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Select Language:
+                </label>
+                <select
+                  value={selectedLanguage}
+                  onChange={(e) => onLanguageChange(e.target.value)}
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {languages.map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <button className="w-full mt-4 bg-gradient-to-r from-blue-600 to-purple-700 text-white px-4 py-3 rounded-xl font-semibold shadow-lg">
                 Get Started
               </button>
