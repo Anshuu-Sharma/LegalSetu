@@ -4,23 +4,21 @@ const cors = require('cors');
 const mysql = require('mysql2/promise');
 const crypto = require('crypto');
 const axios = require('axios');
+const fs = require('fs');
 
 const app = express();
 
-// Enhanced CORS configuration
 const allowedOrigins = [
-  /^http:\/\/localhost:\d+$/,  // All localhost ports
-  process.env.PRODUCTION_URL    // Your production domain
+  /^http:\/\/localhost:\d+$/, // All localhost ports
+  process.env.PRODUCTION_URL  // Your production domain
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
-    // Check against allowed origins
-    if (allowedOrigins.some(rule => 
-      typeof rule === 'string' 
-        ? rule === origin 
+    if (allowedOrigins.some(rule =>
+      typeof rule === 'string'
+        ? rule === origin
         : rule.test(origin)
     )) {
       return callback(null, true);
@@ -33,33 +31,69 @@ app.use(cors({
 
 app.use(express.json());
 
-// Database connection pool
+// --- Aiven MySQL Pool with Enhanced Settings ---
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
+  ssl: process.env.DB_SSL_CA
+    ? { 
+        ca: fs.readFileSync(process.env.DB_SSL_CA),
+        rejectUnauthorized: true
+      }
+    : undefined,
   waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+  connectionLimit: 20,
+  queueLimit: 0,
+  connectTimeout: 30000,   // 30 seconds
+  enableKeepAlive: true,    // Enable TCP keep-alive
+  keepAliveInitialDelay: 60000, // 60 seconds
 });
 
-// Database connection verification
-pool.getConnection()
-  .then(conn => {
+// Database connection verification with retry logic
+const verifyConnection = async (attempt = 1) => {
+  try {
+    const conn = await pool.getConnection();
     console.log('Connected to MySQL database');
     conn.release();
-  })
-  .catch(err => {
-    console.error('Database connection failed:', err);
-    process.exit(1);
-  });
+  } catch (err) {
+    console.error(`Connection attempt ${attempt} failed:`, err.message);
+    if (attempt < 3) {
+      console.log(`Retrying connection in 5 seconds...`);
+      setTimeout(() => verifyConnection(attempt + 1), 5000);
+    } else {
+      console.error('Failed to connect after 3 attempts');
+      process.exit(1);
+    }
+  }
+};
 
-// Translation endpoint
+// Connection keep-alive
+setInterval(async () => {
+  try {
+    await pool.query('SELECT 1');
+    console.log('Keep-alive query successful');
+  } catch (err) {
+    console.error('Keep-alive query failed:', err.message);
+  }
+}, 5 * 60 * 1000); // Every 5 minutes
+
+// Handle pool errors
+pool.on('connection', (connection) => {
+  connection.on('error', (err) => {
+    console.error('Connection error:', err.message);
+  });
+});
+
+// Initialize connection
+verifyConnection();
+
+// Translation endpoint with connection recovery
 app.post('/translate', async (req, res) => {
   const { text, targetLang, sourceLang = 'en' } = req.body;
   
-  // Input validation
   if (!text || !targetLang) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
@@ -67,26 +101,26 @@ app.post('/translate', async (req, res) => {
   const hash = crypto.createHash('sha256').update(text, 'utf8').digest('hex');
   
   try {
-    // Cache check
+    // Attempt to execute query
     const [cached] = await pool.execute(
-      `SELECT translated_text FROM translations 
-       WHERE source_text_hash = ? 
-         AND source_lang = ? 
-         AND target_lang = ? 
+      `SELECT translated_text FROM translations
+       WHERE source_text_hash = ?
+         AND source_lang = ?
+         AND target_lang = ?
        LIMIT 1`,
       [hash, sourceLang, targetLang]
     );
 
     if (cached.length > 0) {
       await pool.execute(
-        `UPDATE translations 
-         SET last_used = CURRENT_TIMESTAMP 
+        `UPDATE translations
+         SET last_used = CURRENT_TIMESTAMP
          WHERE source_text_hash = ?`,
         [hash]
       );
-      return res.json({ 
-        translation: cached[0].translated_text, 
-        cached: true 
+      return res.json({
+        translation: cached[0].translated_text,
+        cached: true
       });
     }
 
@@ -111,17 +145,28 @@ app.post('/translate', async (req, res) => {
 
     const translated = response.data.data.translations[0].translatedText;
 
-    // Store in database
-    await pool.execute(
-      `INSERT INTO translations 
-       (source_text_hash, source_lang, target_lang, translated_text)
-       VALUES (?, ?, ?, ?)`,
-      [hash, sourceLang, targetLang, translated]
-    );
+    // Store in database with retry logic
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        await pool.execute(
+          `INSERT INTO translations
+           (source_text_hash, source_lang, target_lang, translated_text)
+           VALUES (?, ?, ?, ?)`,
+          [hash, sourceLang, targetLang, translated]
+        );
+        break;
+      } catch (err) {
+        retries--;
+        if (retries === 0) throw err;
+        console.log(`Retrying insert (${retries} attempts remaining)...`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
 
-    res.json({ 
-      translation: translated, 
-      cached: false 
+    res.json({
+      translation: translated,
+      cached: false
     });
 
   } catch (err) {
@@ -130,10 +175,16 @@ app.post('/translate', async (req, res) => {
     console.error('Error details:', {
       message: err.message,
       code: err.code,
-      response: err.response?.data
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
 
-    res.status(500).json({ 
+    // Handle specific MySQL errors
+    if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+      console.log('Attempting to reconnect to database...');
+      await verifyConnection();
+    }
+
+    res.status(500).json({
       error: 'Translation failed',
       ...(process.env.NODE_ENV === 'development' && {
         details: err.message,
