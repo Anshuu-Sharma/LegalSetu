@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Mic, MicOff, Volume2, VolumeX, Languages, FileText, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '../contexts/TranslationContext';
+import LocalizedText from './LocalizedText';
 
 interface Message {
   id: string;
@@ -10,11 +12,9 @@ interface Message {
   language?: string;
 }
 
-interface ChatInterfaceProps {
-  selectedLanguage: string;
-}
+const ChatInterface: React.FC = () => {
+  const { language, t } = useTranslation();
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedLanguage }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -28,32 +28,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedLanguage }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const languages = [
-    { code: 'en', name: 'English' },
-    { code: 'hi', name: 'हिन्दी' },
-    { code: 'bn', name: 'বাংলা' },
-    { code: 'te', name: 'తెలుగు' },
-    { code: 'ta', name: 'தமிழ்' },
-    { code: 'mr', name: 'मराठी' },
-    { code: 'gu', name: 'ગુજરાતી' },
-    { code: 'kn', name: 'ಕನ್ನಡ' },
-    { code: 'ml', name: 'മലയാളം' },
-    { code: 'or', name: 'ଓଡ଼ିଆ' },
-    { code: 'pa', name: 'ਪੰਜਾਬੀ' },
-    { code: 'as', name: 'অসমীয়া' },
-    { code: 'sa', name: 'संस्कृतम्' },
-    { code: 'ks', name: 'कॉशुर' },
-    { code: 'ne', name: 'नेपाली' },
-    { code: 'sd', name: 'सिन्धी' },
-    { code: 'doi', name: 'डोगरी' },
-    { code: 'mni', name: 'ꯃꯤꯇꯩꯂꯣꯟ' },
-    { code: 'sat', name: 'ᱥᱟᱱᱛᱟᱲᱤ' },
-    { code: 'ur', name: 'اُردُو' },
-    { code: 'brx', name: 'बड़ो' },
-    { code: 'kok', name: 'कोंकणी' },
-    { code: 'lus', name: 'Mizo ṭawng' }
-  ];
 
   const sampleResponses = [
     'In this case, Article 21 of the Indian Constitution gives you the right to life and personal liberty. You can appeal on this basis.',
@@ -70,7 +44,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedLanguage }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputText.trim()) return;
 
     const userMessage: Message = {
@@ -78,20 +52,23 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedLanguage }) => {
       text: inputText,
       sender: 'user',
       timestamp: new Date(),
-      language: selectedLanguage
+      language
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
 
-    // Simulate bot response
-    setTimeout(() => {
+    // Simulate bot response with translation
+    setTimeout(async () => {
+      const botText = sampleResponses[Math.floor(Math.random() * sampleResponses.length)];
+      const translatedBotText = await t(botText);
+
       const botResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: sampleResponses[Math.floor(Math.random() * sampleResponses.length)],
+        text: translatedBotText,
         sender: 'bot',
         timestamp: new Date(),
-        language: selectedLanguage
+        language
       };
       setMessages(prev => [...prev, botResponse]);
     }, 1000);
@@ -113,6 +90,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedLanguage }) => {
       setTimeout(() => setIsSpeaking(false), 3000);
     }
   };
+
+  // Quick action suggestions
+  const quickSuggestions = [
+    'Property matters',
+    'Marriage law',
+    'Business disputes',
+    'Document review',
+    'Court procedure'
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 py-8 pt-28">
@@ -137,11 +123,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedLanguage }) => {
               </motion.div>
               <div>
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Legal Assistant
+                  <LocalizedText text="Legal Assistant" />
                 </h2>
                 <p className="text-sm text-green-600 flex items-center font-medium">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                  Online • Ready to help
+                  <LocalizedText text="Online • Ready to help" />
                 </p>
               </div>
             </div>
@@ -150,16 +136,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedLanguage }) => {
             <div className="flex items-center space-x-3">
               <Languages className="w-5 h-5 text-gray-500" />
               <select
-                value={selectedLanguage}
+                value={language}
                 disabled
                 className="bg-white/80 backdrop-blur-sm rounded-xl px-4 py-2 text-sm border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-not-allowed"
                 title="Change language from the top bar"
               >
-                {languages.map((lang) => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.name}
-                  </option>
-                ))}
+                <option value={language}>{language}</option>
               </select>
             </div>
           </div>
@@ -186,7 +168,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedLanguage }) => {
                     ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-br-md'
                     : 'bg-white border border-gray-200 text-gray-900 rounded-bl-md'
                 }`}>
-                  <p className="text-sm leading-relaxed">{message.text}</p>
+                  <p className="text-sm leading-relaxed">
+                    <LocalizedText text={message.text} />
+                  </p>
                   <div className="flex items-center justify-between mt-3">
                     <span className="text-xs opacity-70 font-medium">
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -253,13 +237,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedLanguage }) => {
           
           {/* Quick Actions */}
           <div className="mt-6 flex flex-wrap gap-3">
-            {[
-              'Property matters',
-              'Marriage law',
-              'Business disputes',
-              'Document review',
-              'Court procedure'
-            ].map((suggestion, index) => (
+            {quickSuggestions.map((suggestion, index) => (
               <motion.button
                 key={index}
                 whileHover={{ scale: 1.05 }}
@@ -267,7 +245,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedLanguage }) => {
                 onClick={() => setInputText(`Tell me about ${suggestion.toLowerCase()}`)}
                 className="px-4 py-2 bg-white/80 backdrop-blur-sm text-gray-700 rounded-xl text-sm hover:bg-blue-50 hover:text-blue-600 transition-all duration-300 border border-gray-200 shadow-sm"
               >
-                {suggestion}
+                <LocalizedText text={suggestion} />
               </motion.button>
             ))}
           </div>

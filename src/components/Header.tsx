@@ -1,13 +1,8 @@
 import React, { useRef, useEffect } from 'react';
 import { Scale, Menu, X, Sparkles, ChevronDown, Globe } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-interface HeaderProps {
-  activeSection: string;
-  setActiveSection: (section: string) => void;
-  selectedLanguage: string;
-  onLanguageChange: (language: string) => void;
-}
+import { useTranslation } from '../contexts/TranslationContext';
+import LocalizedText from './LocalizedText';
 
 const languages = [
   { code: 'en', name: 'English' },
@@ -22,49 +17,30 @@ const languages = [
   { code: 'or', name: 'ଓଡ଼ିଆ' },
   { code: 'pa', name: 'ਪੰਜਾਬੀ' },
   { code: 'as', name: 'অসমীয়া' },
-  { code: 'sa', name: 'संस्कृतम्' },
-  { code: 'ks', name: 'कॉशुर' },
   { code: 'ne', name: 'नेपाली' },
-  { code: 'sd', name: 'सिन्धी' },
-  { code: 'doi', name: 'डोगरी' },
-  { code: 'mni', name: 'ꯃꯤꯇꯩꯂꯣꯟ' },
-  { code: 'sat', name: 'ᱥᱟᱱᱛᱟᱲᱤ' },
-  { code: 'ur', name: 'اُردُو' },
-  { code: 'brx', name: 'बड़ो' },
-  { code: 'kok', name: 'कोंकणी' },
-  { code: 'lus', name: 'Mizo ṭawng' }
+  { code: 'ur', name: 'اُردُو' }
 ];
 
-const Header: React.FC<HeaderProps> = ({
-  activeSection,
-  setActiveSection,
-  selectedLanguage,
-  onLanguageChange
-}) => {
+
+interface HeaderProps {
+  activeSection: string;
+  setActiveSection: (section: string) => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ activeSection, setActiveSection }) => {
+  const { language, setLanguage } = useTranslation();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [isLanguageOpen, setIsLanguageOpen] = React.useState(false);
-
-  // Ref for the language dropdown
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown if clicking outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsLanguageOpen(false);
       }
-    }
-    if (isLanguageOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.removeEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
     };
+    if (isLanguageOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isLanguageOpen]);
 
   const navigation = [
@@ -83,18 +59,14 @@ const Header: React.FC<HeaderProps> = ({
     >
       <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
+          {/* Branding */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center space-x-3"
           >
-            <div className="relative">
-              <div className="bg-gradient-to-br from-blue-600 to-purple-700 p-3 rounded-2xl shadow-lg">
-                <Scale className="h-7 w-7 text-white" />
-              </div>
-              <div className="absolute -top-1 -right-1">
-                <Sparkles className="h-4 w-4 text-yellow-400" />
-              </div>
+            <div className="bg-gradient-to-br from-blue-600 to-purple-700 p-3 rounded-2xl shadow-lg">
+              <Scale className="h-7 w-7 text-white" />
             </div>
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-700 bg-clip-text text-transparent">
@@ -119,7 +91,8 @@ const Header: React.FC<HeaderProps> = ({
                     : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
                 }`}
               >
-                {item.name}
+                {/* UPDATED: Wrap with LocalizedText */}
+                <LocalizedText text={item.name} />
                 {activeSection === item.id && (
                   <motion.div
                     layoutId="activeTab"
@@ -130,15 +103,14 @@ const Header: React.FC<HeaderProps> = ({
               </motion.button>
             ))}
 
-            {/* Desktop Language Dropdown with outside click close */}
+            {/* Language Dropdown */}
             <div className="relative ml-4" ref={dropdownRef}>
               <button
                 onClick={() => setIsLanguageOpen(!isLanguageOpen)}
                 className="flex items-center px-4 py-2 text-gray-600 hover:text-blue-600 rounded-xl transition-colors font-medium"
-                type="button"
               >
                 <Globe className="w-5 h-5 mr-2" />
-                {languages.find(lang => lang.code === selectedLanguage)?.name}
+                {languages.find(lang => lang.code === language)?.name || 'Select language'}
                 <ChevronDown className="w-4 h-4 ml-2" />
               </button>
               {isLanguageOpen && (
@@ -147,11 +119,11 @@ const Header: React.FC<HeaderProps> = ({
                     <button
                       key={lang.code}
                       onClick={() => {
-                        onLanguageChange(lang.code);
+                        setLanguage(lang.code);
                         setIsLanguageOpen(false);
                       }}
                       className={`w-full px-4 py-3 text-sm text-left ${
-                        selectedLanguage === lang.code
+                        language === lang.code
                           ? 'bg-blue-50 text-blue-600'
                           : 'text-gray-600 hover:bg-gray-50'
                       } transition-colors rounded-xl`}
@@ -168,11 +140,11 @@ const Header: React.FC<HeaderProps> = ({
               whileTap={{ scale: 0.95 }}
               className="ml-2 bg-gradient-to-r from-blue-600 to-purple-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
             >
-              Get Started
+              <LocalizedText text="Get Started" />
             </motion.button>
           </div>
 
-          {/* Mobile menu button */}
+          {/* Mobile Menu */}
           <div className="md:hidden">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -188,7 +160,6 @@ const Header: React.FC<HeaderProps> = ({
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
             className="md:hidden border-t border-gray-200/50 bg-white/90 backdrop-blur-xl rounded-b-2xl"
           >
             <div className="px-2 pt-2 pb-3 space-y-1">
@@ -199,22 +170,23 @@ const Header: React.FC<HeaderProps> = ({
                     setActiveSection(item.id);
                     setMobileMenuOpen(false);
                   }}
-                  className={`block w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                  className={`block w-full text-left px-4 py-3 rounded-xl text-sm font-medium ${
                     activeSection === item.id
                       ? 'bg-blue-50 text-blue-600 border border-blue-200'
                       : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
                   }`}
                 >
-                  {item.name}
+                  {/* UPDATED: Wrap with LocalizedText */}
+                  <LocalizedText text={item.name} />
                 </button>
               ))}
               <div className="px-4 py-3">
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Select Language:
+                  <LocalizedText text="Select Language:" />
                 </label>
                 <select
-                  value={selectedLanguage}
-                  onChange={(e) => onLanguageChange(e.target.value)}
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
                   className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   {languages.map((lang) => (
@@ -224,9 +196,8 @@ const Header: React.FC<HeaderProps> = ({
                   ))}
                 </select>
               </div>
-
               <button className="w-full mt-4 bg-gradient-to-r from-blue-600 to-purple-700 text-white px-4 py-3 rounded-xl font-semibold shadow-lg">
-                Get Started
+                <LocalizedText text="Get Started" />
               </button>
             </div>
           </motion.div>

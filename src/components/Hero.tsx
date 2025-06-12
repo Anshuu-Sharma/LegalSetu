@@ -1,13 +1,16 @@
 import React from 'react';
 import { MessageSquare, FileText, Mic, Globe, Scale, Sparkles, ArrowRight, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
+import LocalizedText from './LocalizedText';
+import { useTranslation } from '../contexts/TranslationContext';
 
 interface HeroProps {
   setActiveSection: (section: string) => void;
-  selectedLanguage: string;
 }
 
-const Hero: React.FC<HeroProps> = ({ setActiveSection, selectedLanguage }) => {
+const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
+  useTranslation(); // Ensures rerender on language change
+
   return (
     <section className="relative min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 overflow-hidden pt-20">
       {/* Background Elements */}
@@ -16,7 +19,6 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection, selectedLanguage }) => {
         <div className="absolute top-20 left-10 w-72 h-72 bg-blue-400/20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-400/10 rounded-full blur-3xl"></div>
-        
         {/* Grid Pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]"></div>
       </div>
@@ -37,22 +39,23 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection, selectedLanguage }) => {
               className="inline-flex items-center px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-blue-200/50 mb-8"
             >
               <Sparkles className="w-4 h-4 text-blue-600 mr-2" />
-              <span className="text-sm font-medium text-blue-700">Powered by Advanced AI</span>
+              <span className="text-sm font-medium text-blue-700">
+                <LocalizedText text="Powered by Advanced AI" />
+              </span>
             </motion.div>
 
             <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-8">
               <span className="bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent">
-                Your AI-Powered
+                <LocalizedText text="Your AI-Powered" />
               </span>
               <br />
               <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Legal Assistant
+                <LocalizedText text="Legal Assistant" />
               </span>
             </h1>
             
             <p className="text-xl text-gray-600 mb-10 leading-relaxed max-w-2xl">
-              Get instant legal advice, document analysis, and form assistance in multiple Indian languages. 
-              Our advanced AI advocate helps you navigate complex legal matters with confidence.
+              <LocalizedText text="Get instant legal advice, document analysis, and form assistance in multiple Indian languages. Our advanced AI advocate helps you navigate complex legal matters with confidence." />
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-12">
@@ -62,7 +65,7 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection, selectedLanguage }) => {
                 onClick={() => setActiveSection('chat')}
                 className="group bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center"
               >
-                Start AI Chat
+                <LocalizedText text="Start AI Chat" />
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </motion.button>
               
@@ -73,7 +76,7 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection, selectedLanguage }) => {
                 className="group bg-white/80 backdrop-blur-sm text-gray-700 px-8 py-4 rounded-2xl font-semibold text-lg border border-gray-200 hover:border-blue-300 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
               >
                 <Play className="mr-2 w-5 h-5" />
-                Watch Demo
+                <LocalizedText text="Watch Demo" />
               </motion.button>
             </div>
 
@@ -95,7 +98,9 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection, selectedLanguage }) => {
                   <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                     {stat.number}
                   </div>
-                  <div className="text-sm text-gray-500 font-medium">{stat.label}</div>
+                  <div className="text-sm text-gray-500 font-medium">
+                    <LocalizedText text={stat.label} />
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -134,8 +139,12 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection, selectedLanguage }) => {
                     <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
                   </div>
                 </motion.div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-2">LegalBot AI</h3>
-                <p className="text-blue-600 font-medium">Your Personal Legal Assistant</p>
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                  <LocalizedText text="LegalBot AI" />
+                </h3>
+                <p className="text-blue-600 font-medium">
+                  <LocalizedText text="Your Personal Legal Assistant" />
+                </p>
               </div>
 
               {/* Feature Grid */}
@@ -157,7 +166,9 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection, selectedLanguage }) => {
                     <div className={`w-10 h-10 mx-auto mb-3 rounded-xl bg-gradient-to-r ${feature.color} flex items-center justify-center shadow-lg`}>
                       <feature.icon className="w-5 h-5 text-white" />
                     </div>
-                    <span className="text-sm font-medium text-gray-700">{feature.label}</span>
+                    <span className="text-sm font-medium text-gray-700">
+                      <LocalizedText text={feature.label} />
+                    </span>
                   </motion.div>
                 ))}
               </div>
@@ -166,14 +177,16 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection, selectedLanguage }) => {
               <div className="mt-8 bg-white/60 backdrop-blur-sm rounded-2xl p-4 border border-white/50">
                 <div className="flex items-center mb-3">
                   <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
-                  <span className="text-sm font-medium text-gray-600">Live Chat Preview</span>
+                  <span className="text-sm font-medium text-gray-600">
+                    <LocalizedText text="Live Chat Preview" />
+                  </span>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-blue-100 rounded-lg p-2 text-sm text-blue-800">
-                    "How can I file a property dispute case?"
+                    <LocalizedText text="How can I file a property dispute case?" />
                   </div>
                   <div className="bg-gray-100 rounded-lg p-2 text-sm text-gray-700">
-                    "I can help you with that. Let me guide you through the process..."
+                    <LocalizedText text="I can help you with that. Let me guide you through the process..." />
                   </div>
                 </div>
               </div>

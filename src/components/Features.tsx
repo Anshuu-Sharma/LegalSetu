@@ -12,12 +12,9 @@ import {
   Sparkles
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import LocalizedText from './LocalizedText';
 
-interface FeaturesProps {
-  selectedLanguage: string;
-}
-
-const Features: React.FC<FeaturesProps> = ({selectedLanguage}) => {
+const Features: React.FC = () => {
   const features = [
     {
       icon: MessageSquare,
@@ -95,21 +92,22 @@ const Features: React.FC<FeaturesProps> = ({selectedLanguage}) => {
         >
           <div className="inline-flex items-center px-4 py-2 bg-blue-50 rounded-full border border-blue-200 mb-6">
             <Sparkles className="w-4 h-4 text-blue-600 mr-2" />
-            <span className="text-sm font-medium text-blue-700">Comprehensive Features</span>
+            <span className="text-sm font-medium text-blue-700">
+              <LocalizedText text="Comprehensive Features" />
+            </span>
           </div>
           
           <h2 className="text-4xl md:text-6xl font-bold mb-6">
             <span className="bg-gradient-to-r from-gray-900 to-blue-900 bg-clip-text text-transparent">
-              Comprehensive Legal
+              <LocalizedText text="Comprehensive Legal" />
             </span>
             <br />
             <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Solutions
+              <LocalizedText text="Solutions" />
             </span>
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Experience the future of legal assistance with our AI-powered platform designed 
-            specifically for Indian legal system and languages.
+            <LocalizedText text="Experience the future of legal assistance with our AI-powered platform designed specifically for Indian legal system and languages." />
           </p>
         </motion.div>
 
@@ -128,10 +126,10 @@ const Features: React.FC<FeaturesProps> = ({selectedLanguage}) => {
                 <feature.icon className="w-7 h-7 text-white" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">
-                {feature.title}
+                <LocalizedText text={feature.title} />
               </h3>
               <p className="text-gray-600 leading-relaxed">
-                {feature.description}
+                <LocalizedText text={feature.description} />
               </p>
             </motion.div>
           ))}
@@ -150,11 +148,10 @@ const Features: React.FC<FeaturesProps> = ({selectedLanguage}) => {
           
           <div className="relative">
             <h3 className="text-3xl md:text-4xl font-bold mb-6">
-              Ready to Get Started?
+              <LocalizedText text="Ready to Get Started?" />
             </h3>
             <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto leading-relaxed">
-              Join thousands of users who trust LegalBot AI for their legal needs. 
-              Get instant answers to your legal questions today.
+              <LocalizedText text="Join thousands of users who trust LegalBot AI for their legal needs. Get instant answers to your legal questions today." />
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <motion.button 
@@ -162,7 +159,7 @@ const Features: React.FC<FeaturesProps> = ({selectedLanguage}) => {
                 whileTap={{ scale: 0.95 }}
                 className="group bg-white text-blue-600 px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center"
               >
-                Start Free Trial
+                <LocalizedText text="Start Free Trial" />
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </motion.button>
               <motion.button 
@@ -170,7 +167,7 @@ const Features: React.FC<FeaturesProps> = ({selectedLanguage}) => {
                 whileTap={{ scale: 0.95 }}
                 className="bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-bold text-lg border border-white/20 hover:bg-white/20 transition-all duration-300"
               >
-                Watch Demo
+                <LocalizedText text="Watch Demo" />
               </motion.button>
             </div>
           </div>
