@@ -30,7 +30,7 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     if (language === 'en') return text;
     
     try {
-      const response = await fetch('http://localhost:3001/translate', {
+      const response = await fetch('http://localhost:5000/api/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, targetLang: language }),

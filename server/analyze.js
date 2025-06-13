@@ -1,20 +1,16 @@
+// server/analyze.js
 require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
-const cors = require('cors');
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 const Tesseract = require('tesseract.js');
 const axios = require('axios');
 const path = require('path');
 
-const app = express();
+const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
-const PORT = 5000;
-
-app.use(cors());
-app.use(express.json());
 
 // Utility: OCR from image
 const extractTextFromImage = async (filePath) => {
@@ -26,9 +22,8 @@ const extractTextFromImage = async (filePath) => {
 const extractTextFromPDF = async (filePath) => {
   const buffer = fs.readFileSync(filePath);
   const data = await pdfParse(buffer);
-
   const text = data.text.trim();
-  const needsOCR = text.length < 100; // fallback if PDF text is too sparse
+  const needsOCR = text.length < 100;
 
   if (needsOCR) {
     const imageText = await extractTextFromImage(filePath);
@@ -43,7 +38,6 @@ const extractTextFromDOCX = async (filePath) => {
   const result = await mammoth.extractRawText({ path: filePath });
   const text = result.value.trim();
 
-  // If content is empty, fallback to OCR (treat as image)
   if (text.length < 50) {
     const imageText = await extractTextFromImage(filePath);
     return { text: imageText, pages: 1 };
@@ -55,13 +49,11 @@ const extractTextFromDOCX = async (filePath) => {
 // Gemini 2.0 Flash API Call
 const callGeminiFlash = async (text) => {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-
+  
   const body = {
-    contents: [
-      {
-        parts: [
-          {
-            text: `You are an expert legal assistant whose primary responsibility is to protect the user. Carefully read the legal document below and return a detailed, user-centric analysis that simplifies legal jargon and highlights any content that could negatively affect the user.
+    contents: [{
+      parts: [{
+        text: `You are an expert legal assistant whose primary responsibility is to protect the user. Carefully read the legal document below and return a detailed, user-centric analysis that simplifies legal jargon and highlights any content that could negatively affect the user.
 
 Responsibilities:
 - Detect hidden risks, vague obligations, or legal traps.
@@ -86,11 +78,9 @@ Important:
 }
 
 Here is the document:
-"""${text.slice(0, 100000)}"""`,
-          },
-        ],
-      },
-    ],
+"""${text.slice(0, 100000)}"""`
+      }]
+    }]
   };
 
   const response = await axios.post(url, body, {
@@ -99,19 +89,17 @@ Here is the document:
 
   const raw = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
   const cleaned = raw.replace(/```json|```/g, '').trim();
-
   return JSON.parse(cleaned);
 };
 
 // Main route
-app.post('/api/analyze', upload.single('file'), async (req, res) => {
+router.post('/analyze', upload.single('file'), async (req, res) => {
   const file = req.file;
   if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
   try {
     const mime = file.mimetype;
     const ext = path.extname(file.originalname).toLowerCase();
-
     let text = '';
     let pages = 1;
 
@@ -154,7 +142,7 @@ app.post('/api/analyze', upload.single('file'), async (req, res) => {
   }
 });
 
-app.post('/api/chat', async (req, res) => {
+router.post('/chat', async (req, res) => {
   const { query, fullText, metadata } = req.body;
 
   if (!query || !fullText || !metadata) {
@@ -212,11 +200,9 @@ Full document text (only search if needed):
     const response = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
-        contents: [
-          {
-            parts: [{ text: geminiQuery }],
-          },
-        ],
+        contents: [{
+          parts: [{ text: geminiQuery }],
+        }],
       },
       {
         headers: { 'Content-Type': 'application/json' },
@@ -231,7 +217,7 @@ Full document text (only search if needed):
   }
 });
 
-app.post('/api/assist', async (req, res) => {
+router.post('/assist', async (req, res) => {
   const { query, language = 'en', history = [] } = req.body;
 
   if (!query) {
@@ -265,7 +251,6 @@ Your only focus is Indian law. You do not assist with legal systems outside Indi
 Your tone should reflect clarity, expertise, and confidence. Be respectful, professional, and always helpful.
 `;
 
-
     const finalPrompt = `
 ${systemPrompt}
 
@@ -275,11 +260,9 @@ ${recentHistory ? `${recentHistory}\n` : ''}User's Current Question: "${query}"
     const response = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
-        contents: [
-          {
-            parts: [{ text: finalPrompt }],
-          },
-        ],
+        contents: [{
+          parts: [{ text: finalPrompt }],
+        }],
       },
       {
         headers: { 'Content-Type': 'application/json' },
@@ -294,10 +277,4 @@ ${recentHistory ? `${recentHistory}\n` : ''}User's Current Question: "${query}"
   }
 });
 
-
-
-
-
-app.listen(PORT, () => {
-  console.log(`✅ LawBot backend running on http://localhost:${PORT}`);
-});
+module.exports = router;

@@ -1,3 +1,4 @@
+// server/index.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -6,32 +7,9 @@ const crypto = require('crypto');
 const axios = require('axios');
 const fs = require('fs');
 
-const app = express();
+const router = express.Router();
 
-const allowedOrigins = [
-  /^http:\/\/localhost:\d+$/, // All localhost ports
-  process.env.PRODUCTION_URL  // Your production domain
-];
-
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.some(rule =>
-      typeof rule === 'string'
-        ? rule === origin
-        : rule.test(origin)
-    )) {
-      return callback(null, true);
-    }
-    return callback(new Error(`Origin '${origin}' not allowed by CORS`), false);
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
-app.use(express.json());
-
-// --- Aiven MySQL Pool with Enhanced Settings ---
+// MySQL Pool configuration
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
@@ -39,7 +17,7 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   ssl: process.env.DB_SSL_CA
-    ? { 
+    ? {
         ca: fs.readFileSync(process.env.DB_SSL_CA),
         rejectUnauthorized: true
       }
@@ -47,9 +25,9 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 20,
   queueLimit: 0,
-  connectTimeout: 30000,   // 30 seconds
-  enableKeepAlive: true,    // Enable TCP keep-alive
-  keepAliveInitialDelay: 60000, // 60 seconds
+  connectTimeout: 30000,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 60000,
 });
 
 // Database connection verification with retry logic
@@ -78,7 +56,7 @@ setInterval(async () => {
   } catch (err) {
     console.error('Keep-alive query failed:', err.message);
   }
-}, 5 * 60 * 1000); // Every 5 minutes
+}, 5 * 60 * 1000);
 
 // Handle pool errors
 pool.on('connection', (connection) => {
@@ -91,22 +69,22 @@ pool.on('connection', (connection) => {
 verifyConnection();
 
 // Translation endpoint with connection recovery
-app.post('/translate', async (req, res) => {
+router.post('/translate', async (req, res) => {
   const { text, targetLang, sourceLang = 'en' } = req.body;
-  
+
   if (!text || !targetLang) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
   const hash = crypto.createHash('sha256').update(text, 'utf8').digest('hex');
-  
+
   try {
     // Attempt to execute query
     const [cached] = await pool.execute(
       `SELECT translated_text FROM translations
        WHERE source_text_hash = ?
-         AND source_lang = ?
-         AND target_lang = ?
+       AND source_lang = ?
+       AND target_lang = ?
        LIMIT 1`,
       [hash, sourceLang, targetLang]
     );
@@ -118,6 +96,7 @@ app.post('/translate', async (req, res) => {
          WHERE source_text_hash = ?`,
         [hash]
       );
+
       return res.json({
         translation: cached[0].translated_text,
         cached: true
@@ -168,7 +147,6 @@ app.post('/translate', async (req, res) => {
       translation: translated,
       cached: false
     });
-
   } catch (err) {
     console.error('Translation error:');
     console.error('Request:', req.body);
@@ -194,10 +172,4 @@ app.post('/translate', async (req, res) => {
   }
 });
 
-// Server startup
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log('Google API Key:', process.env.GOOGLE_API_KEY ? '***' : 'MISSING');
-  console.log('Allowed Origins:', allowedOrigins);
-});
+module.exports = router;
