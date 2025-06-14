@@ -6,6 +6,7 @@ import { useTranslation } from '../contexts/TranslationContext';
 
 interface HeroProps {
   setActiveSection: (section: string) => void;
+  onGetStarted:  () => void;
 }
 
 const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {

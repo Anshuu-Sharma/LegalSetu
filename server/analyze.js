@@ -1,55 +1,59 @@
-// server/analyze.js
+//merged
 require('dotenv').config();
+
 const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
+const crypto = require('crypto');
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 const Tesseract = require('tesseract.js');
 const axios = require('axios');
 const path = require('path');
+const { Translate } = require('@google-cloud/translate').v2;
 
+const translate = new Translate({ key: process.env.GOOGLE_API_KEY });
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
-// Utility: OCR from image
+// In-memory cache: key = hash(docText + lang), value = analysis result
+const analysisCache = new Map();
+
+// Generate a cache key from document content and language
+function getCacheKey(text, lang) {
+  return crypto.createHash('sha256').update(text + '|LANG|' + lang).digest('hex');
+}
+
+// --- Text extraction utilities ---
 const extractTextFromImage = async (filePath) => {
   const result = await Tesseract.recognize(filePath, 'eng');
   return result.data.text;
 };
 
-// Utility: Extract text from PDF, fallback to OCR if mostly empty
 const extractTextFromPDF = async (filePath) => {
   const buffer = fs.readFileSync(filePath);
   const data = await pdfParse(buffer);
   const text = data.text.trim();
-  const needsOCR = text.length < 100;
-
-  if (needsOCR) {
+  if (text.length < 100) {
     const imageText = await extractTextFromImage(filePath);
     return { text: imageText, pages: data.numpages || 1 };
   }
-
   return { text, pages: data.numpages || 1 };
 };
 
-// Utility: Extract text from DOCX
 const extractTextFromDOCX = async (filePath) => {
   const result = await mammoth.extractRawText({ path: filePath });
   const text = result.value.trim();
-
   if (text.length < 50) {
     const imageText = await extractTextFromImage(filePath);
     return { text: imageText, pages: 1 };
   }
-
   return { text, pages: 1 };
 };
 
-// Gemini 2.0 Flash API Call
+// --- Gemini API call for document analysis ---
 const callGeminiFlash = async (text) => {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-  
   const body = {
     contents: [{
       parts: [{
@@ -62,10 +66,9 @@ Responsibilities:
 - Suggest how users can protect themselves or renegotiate.
 
 Important:
-- Do NOT use bold (**), italic (*), or markdown formatting.
+- Do NOT use bold (**), italic (*), backticks (\`\`\`), or markdown formatting.
 - Use bullet points where necessary.
-- Return valid, clean JSON in the format below only:
-
+- Return valid, raw JSON only:
 {
   "summary": "...",
   "clauses": ["..."],
@@ -80,19 +83,82 @@ Important:
 Here is the document:
 """${text.slice(0, 100000)}"""`
       }]
-    }]
+    }],
+    generationConfig: {
+      temperature: 0 // For maximum consistency
+    }
   };
 
   const response = await axios.post(url, body, {
     headers: { 'Content-Type': 'application/json' },
   });
 
-  const raw = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-  const cleaned = raw.replace(/```json|```/g, '').trim();
-  return JSON.parse(cleaned);
+  let raw = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+  raw = raw.replace(/``````/g, '').replace(/``````/g, '').trim();
+  const firstBrace = raw.indexOf('{');
+  const lastBrace = raw.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    raw = raw.substring(firstBrace, lastBrace + 1);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    throw new Error('Failed to parse Gemini response');
+  }
 };
 
-// Main route
+// --- Gemini API call for chatbot ---
+const callGeminiChat = async (query, history = []) => {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  const context = history.length > 0
+    ? `Previous conversation:\n${history.join('\n')}\n\nCurrent question: ${query}`
+    : query;
+  const body = {
+    contents: [{
+      parts: [{
+        text: `You are an expert legal assistant for Indian law. Provide accurate, helpful legal guidance. Always clarify that you're providing general information, not specific legal advice.
+
+User question: ${context}
+
+Respond in a clear, helpful manner. If the question involves complex legal issues, recommend consulting a qualified lawyer.`
+      }]
+    }],
+    generationConfig: { temperature: 0.7 }
+  };
+
+  const response = await axios.post(url, body, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  return response.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+    'I apologize, but I could not process your question. Please try again.';
+};
+
+// --- Translate all analysis fields ---
+const translateAnalysisFields = async (analysis, lang) => {
+  const translated = { ...analysis };
+  translated.summary = (await translate.translate(analysis.summary, lang))[0];
+  translated.clauses = await Promise.all(
+    (analysis.clauses || []).map(c => translate.translate(c, lang).then(([t]) => t))
+  );
+  translated.risks = await Promise.all(
+    (analysis.risks || []).map(r => translate.translate(r, lang).then(([t]) => t))
+  );
+  translated.suggestions = await Promise.all(
+    (analysis.suggestions || []).map(s => translate.translate(s, lang).then(([t]) => t))
+  );
+  if (analysis.pageMetadata) {
+    const meta = analysis.pageMetadata;
+    const newMeta = {};
+    for (const key in meta) {
+      newMeta[key] = (await translate.translate(meta[key], lang))[0];
+    }
+    translated.pageMetadata = newMeta;
+  }
+  return translated;
+};
+
+// --- Main analysis endpoint: upload, analyze, cache, and translate ---
 router.post('/analyze', upload.single('file'), async (req, res) => {
   const file = req.file;
   if (!file) return res.status(400).json({ error: 'No file uploaded' });
@@ -119,22 +185,45 @@ router.post('/analyze', upload.single('file'), async (req, res) => {
 
     fs.unlinkSync(file.path); // clean up
 
+    const requestedLang = req.body.language || 'en';
+    const cacheKey = getCacheKey(text, requestedLang);
+
+    // Return cached analysis if available
+    if (analysisCache.has(cacheKey)) {
+      return res.json({
+        status: 'completed',
+        analysisId: cacheKey,
+        analysis: analysisCache.get(cacheKey)
+      });
+    }
+
+    // Generate new analysis
     const parsed = await callGeminiFlash(text);
-    const { summary, clauses, risks, suggestions, pageMetadata } = parsed;
+    let resultAnalysis = {
+      summary: parsed.summary,
+      clauses: parsed.clauses,
+      risks: parsed.risks,
+      suggestions: parsed.suggestions,
+      pageMetadata: parsed.pageMetadata || {},
+      fullText: text,
+      _meta: {
+        pages,
+        pageMetadata: parsed.pageMetadata || {},
+      }
+    };
+
+    // Translate if needed
+    if (requestedLang !== 'en') {
+      resultAnalysis = await translateAnalysisFields(resultAnalysis, requestedLang);
+    }
+
+    // Cache and return
+    analysisCache.set(cacheKey, resultAnalysis);
 
     return res.json({
       status: 'completed',
-      analysis: {
-        summary,
-        clauses,
-        risks,
-        suggestions,
-        fullText: text,
-        _meta: {
-          pages,
-          pageMetadata: pageMetadata || {},
-        },
-      },
+      analysisId: cacheKey,
+      analysis: resultAnalysis,
     });
   } catch (err) {
     console.error('Error during analysis:', err.message || err);
@@ -142,33 +231,76 @@ router.post('/analyze', upload.single('file'), async (req, res) => {
   }
 });
 
+// --- Retrieve analysis by ID (with on-the-fly translation if needed) ---
+router.get('/analysis/:id', async (req, res) => {
+  const { id } = req.params;
+  const { lang = 'en' } = req.query;
+
+  const analysis = analysisCache.get(id);
+  if (!analysis) {
+    return res.status(404).json({ error: 'Analysis not found' });
+  }
+
+  let result = analysis;
+  if (lang !== 'en') {
+    try {
+      result = await translateAnalysisFields(analysis, lang);
+      result.fullText = analysis.fullText;
+      result._meta = {
+        pages: analysis._meta.pages,
+        pageMetadata: result.pageMetadata || {},
+      };
+    } catch (err) {
+      console.error('Translation error:', err);
+    }
+  }
+
+  res.json(result);
+});
+
+// --- Chatbot endpoint for general legal Q&A ---
+router.post('/assist', async (req, res) => {
+  const { query, language = 'en', history = [] } = req.body;
+
+  try {
+    let reply = await callGeminiChat(query, history);
+
+    // Translate reply if needed
+    if (language !== 'en') {
+      reply = (await translate.translate(reply, language))[0];
+    }
+
+    res.json({ reply });
+  } catch (error) {
+    console.error('Chat error:', error);
+    res.status(500).json({
+      reply: 'I apologize, but I encountered an error. Please try again later.'
+    });
+  }
+});
+
+// --- Chatbot endpoint for document-specific Q&A ---
 router.post('/chat', async (req, res) => {
   const { query, fullText, metadata } = req.body;
-
   if (!query || !fullText || !metadata) {
-    console.log('❌ Missing query/fullText/metadata', { query, fullText: !!fullText, metadata: !!metadata });
     return res.status(400).json({ error: 'Missing parameters' });
   }
 
   try {
-    // Step 1: Match relevant pages from metadata
     let matchedPages = [];
     let extractedSections = '';
-
     if (metadata?.pageMetadata && typeof metadata.pageMetadata === 'object') {
       const matches = Object.entries(metadata.pageMetadata).filter(
         ([_, content]) =>
           typeof content === 'string' &&
           content.toLowerCase().includes(query.toLowerCase())
       );
-
       matchedPages = matches.map(([page]) => parseInt(page));
       extractedSections = matches
         .map(([page, content]) => `Page ${page}: ${content}`)
         .join('\n\n');
     }
 
-    // Step 2: Build Gemini prompt
     const geminiQuery = `
 You are a highly reliable legal assistant. A user has asked the following question about a legal document:
 
@@ -184,29 +316,22 @@ Instructions:
 - If the answer requires assumptions, clearly state that they are assumptions.
 
 Relevant page summaries (may help):
+
 ${extractedSections || 'None detected.'}
 
 Full document text (only search if needed):
+
 """${fullText.slice(0, 100000)}"""
 `;
 
-    console.log('📤 Gemini Chat Request Preview:', {
-      query,
-      matchedPages,
-      snippet: geminiQuery.slice(0, 500),
-    });
-
-    // Step 3: Gemini API call
     const response = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         contents: [{
-          parts: [{ text: geminiQuery }],
-        }],
+          parts: [{ text: geminiQuery }]
+        }]
       },
-      {
-        headers: { 'Content-Type': 'application/json' },
-      }
+      { headers: { 'Content-Type': 'application/json' } }
     );
 
     const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -214,66 +339,6 @@ Full document text (only search if needed):
   } catch (err) {
     console.error('🔥 Chat API Error:', err.response?.data || err.message || err);
     res.status(500).json({ error: 'Chat query failed' });
-  }
-});
-
-router.post('/assist', async (req, res) => {
-  const { query, language = 'en', history = [] } = req.body;
-
-  if (!query) {
-    return res.status(400).json({ error: 'Missing query' });
-  }
-
-  try {
-    // Construct context from previous messages
-    const recentHistory = history
-      .slice(-5) // only last 5 user messages
-      .map((msg, index) => `Previous Q${index + 1}: "${msg}"`)
-      .join('\n');
-
-    const systemPrompt = `
-You are LawBot — the ultimate expert on Indian laws and the Constitution.
-
-You are intelligent, accurate, and professional. You have deep and reliable knowledge of all Indian legal domains — civil, criminal, property, family, labor, cyber law, and more.
-
-Guidelines for your replies:
-- Speak like a calm and trustworthy legal advisor.
-- Keep your answers clear, concise, and focused.
-- Use plain legal language that anyone can understand.
-- Avoid legal jargon unless it's absolutely necessary, and explain it briefly if used.
-- Never guess or make assumptions. Only speak when you are certain.
-- If the user's input is vague or incomplete, politely ask for clarification.
-- Refer to relevant Indian laws (e.g., IPC, CrPC, RTI Act, Contract Act) when useful.
-- Do **not** use **bold**, *italic*, or any other markdown symbols in your responses — just plain, readable text.
-
-Your only focus is Indian law. You do not assist with legal systems outside India.
-
-Your tone should reflect clarity, expertise, and confidence. Be respectful, professional, and always helpful.
-`;
-
-    const finalPrompt = `
-${systemPrompt}
-
-${recentHistory ? `${recentHistory}\n` : ''}User's Current Question: "${query}"
-`;
-
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        contents: [{
-          parts: [{ text: finalPrompt }],
-        }],
-      },
-      {
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
-
-    const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    return res.json({ reply: rawText.trim() });
-  } catch (err) {
-    console.error('🔥 Assist API Error:', err.response?.data || err.message || err);
-    return res.status(500).json({ error: 'Assistant query failed' });
   }
 });
 

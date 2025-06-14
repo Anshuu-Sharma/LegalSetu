@@ -2,31 +2,52 @@ import React from 'react';
 import { Eye, Trash2, FileText, CheckCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
+interface AnalysisResult {
+  summary: string;
+  clauses: string[];
+  risks: string[];
+  suggestions: string[];
+  fullText: string;
+  _meta?: {
+    pages: number;
+    pageMetadata: Record<string, any>;
+  };
+}
+
 interface Doc {
   id: string;
+  analysisId?: string; // Use analysisId from backend
   name: string;
   type: string;
   size: string;
   uploadDate: Date;
   status: 'analyzing' | 'completed' | 'error';
-  analysis?: string;
+  analysis?: AnalysisResult;
 }
 
 interface Props {
   documents: Doc[];
   onDelete: (id: string) => void;
-  onViewAnalysis: (id: string) => void;
+  onViewAnalysis: (analysisId: string) => void; // Now expects analysisId
+  uploadedDocsLabel: string;
+  noDocsLabel: string;
 }
 
-const DocumentList: React.FC<Props> = ({ documents, onDelete, onViewAnalysis }) => (
+const DocumentList: React.FC<Props> = ({
+  documents,
+  onDelete,
+  onViewAnalysis,
+  uploadedDocsLabel,
+  noDocsLabel
+}) => (
   <div className="bg-white rounded-xl shadow-md p-6">
     <h3 className="text-lg font-semibold text-gray-800 mb-5">
-      Uploaded Documents ({documents.length})
+      {uploadedDocsLabel} ({documents.length})
     </h3>
 
     <AnimatePresence>
       {documents.length === 0 ? (
-        <p className="text-center text-gray-500 text-sm">No documents uploaded</p>
+        <p className="text-center text-gray-500 text-sm">{noDocsLabel}</p>
       ) : (
         documents.map((doc) => (
           <motion.div
@@ -49,9 +70,9 @@ const DocumentList: React.FC<Props> = ({ documents, onDelete, onViewAnalysis }) 
               </div>
 
               <div className="flex items-center gap-3">
-                {doc.status === 'completed' && (
+                {doc.status === 'completed' && doc.analysisId && (
                   <button
-                    onClick={() => onViewAnalysis(doc.id)}
+                    onClick={() => onViewAnalysis(doc.analysisId!)}
                     title="View Analysis"
                     className="text-blue-600 hover:text-blue-700 transition"
                   >

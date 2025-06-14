@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Bot, User } from 'lucide-react';
 import { Typewriter } from 'react-simple-typewriter';
 import { motion } from 'framer-motion';
+import { useTranslation } from '../../contexts/TranslationContext.tsx';
 
 interface Analysis {
   summary: string;
@@ -16,7 +17,7 @@ interface Analysis {
 }
 
 interface Props {
-  analysis: Analysis;
+  analysis?: Analysis; // Passed from parent, already translated
   onClose: () => void;
 }
 
@@ -37,11 +38,69 @@ const Section: React.FC<{ title: string; children: React.ReactNode; color?: stri
 );
 
 const AnalysisModal: React.FC<Props> = ({ analysis, onClose }) => {
+  if (!analysis) return null;
+
   const [chatMode, setChatMode] = useState(false);
   const [showDocument, setShowDocument] = useState(false);
   const [messages, setMessages] = useState<{ role: 'user' | 'bot'; text: string; timestamp: string }[]>([]);
   const [input, setInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  const { t, language } = useTranslation();
+
+  const [ui, setUI] = useState({
+    chatWithDoc: 'Chat with Doc',
+    viewAnalysis: 'View Analysis',
+    viewDoc: 'View Document',
+    hideDoc: 'Hide Document',
+    legalDocAnalysis: 'Legal Document Analysis',
+    summary: 'Summary',
+    clauses: 'Clauses',
+    risks: 'Risks',
+    suggestions: 'Suggestions',
+    fullDocument: 'Full Document',
+    analyzing: 'Analyzing...',
+    analysisComplete: 'Analysis Complete',
+    errorDuringAnalysis: 'Error during analysis.',
+    askPlaceholder: 'Ask something about the document...',
+    send: 'Send'
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    const translateUI = async () => {
+      const [
+        chatWithDoc, viewAnalysis, viewDoc, hideDoc, legalDocAnalysis,
+        summary, clauses, risks, suggestions, fullDocument,
+        analyzing, analysisComplete, errorDuringAnalysis, askPlaceholder, send
+      ] = await Promise.all([
+        t('Chat with Doc'),
+        t('View Analysis'),
+        t('View Document'),
+        t('Hide Document'),
+        t('Legal Document Analysis'),
+        t('Summary'),
+        t('Clauses'),
+        t('Risks'),
+        t('Suggestions'),
+        t('Full Document'),
+        t('Analyzing...'),
+        t('Analysis Complete'),
+        t('Error during analysis.'),
+        t('Ask something about the document...'),
+        t('Send')
+      ]);
+      if (mounted) {
+        setUI({
+          chatWithDoc, viewAnalysis, viewDoc, hideDoc, legalDocAnalysis,
+          summary, clauses, risks, suggestions, fullDocument,
+          analyzing, analysisComplete, errorDuringAnalysis, askPlaceholder, send
+        });
+      }
+    };
+    translateUI();
+    return () => { mounted = false; };
+  }, [language, t]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,6 +121,7 @@ const AnalysisModal: React.FC<Props> = ({ analysis, onClose }) => {
           query: input,
           fullText: analysis.fullText,
           metadata: analysis._meta || {},
+          language
         }),
       });
       const result = await res.json();
@@ -101,13 +161,13 @@ const AnalysisModal: React.FC<Props> = ({ analysis, onClose }) => {
             onClick={() => setChatMode((prev) => !prev)}
             className="px-3 py-1 text-sm border border-blue-200 text-blue-600 rounded-md hover:bg-blue-50"
           >
-            {chatMode ? 'View Analysis' : 'Chat with Doc'}
+            {chatMode ? ui.viewAnalysis : ui.chatWithDoc}
           </button>
           <button
             onClick={() => setShowDocument((prev) => !prev)}
             className="px-3 py-1 text-sm border border-purple-200 text-purple-600 rounded-md hover:bg-purple-50"
           >
-            {showDocument ? 'Hide Document' : 'View Document'}
+            {showDocument ? ui.hideDoc : ui.viewDoc}
           </button>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
             <X className="w-5 h-5" />
@@ -116,9 +176,8 @@ const AnalysisModal: React.FC<Props> = ({ analysis, onClose }) => {
 
         {/* Title */}
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          {chatMode ? '💬 Chat with Document' : '📄 Legal Document Analysis'}
+          {chatMode ? `💬 ${ui.chatWithDoc}` : `📄 ${ui.legalDocAnalysis}`}
         </h2>
-
         {/* Content Area */}
         <div className="flex flex-col md:flex-row gap-6">
           {/* Left Side: Chat or Analysis */}
@@ -163,41 +222,40 @@ const AnalysisModal: React.FC<Props> = ({ analysis, onClose }) => {
                   ))}
                   <div ref={chatEndRef} />
                 </div>
-
                 <div className="mt-4 flex items-center gap-2">
                   <input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                    placeholder="Ask something about the document..."
+                    placeholder={ui.askPlaceholder}
                     className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring focus:ring-blue-500"
                   />
                   <button
                     onClick={handleSend}
                     className="bg-blue-600 text-white px-4 py-2 text-sm rounded-xl hover:bg-blue-700"
                   >
-                    Send
+                    {ui.send}
                   </button>
                 </div>
               </div>
             ) : (
               <>
-                <Section title="📌 Summary">{analysis.summary}</Section>
-                <Section title="📃 Clauses">
+                <Section title={`📌 ${ui.summary}`}>{analysis.summary}</Section>
+                <Section title={`📃 ${ui.clauses}`}>
                   <ul className="list-disc pl-5 space-y-2">
                     {analysis.clauses.map((c, i) => (
                       <li key={i}>{c}</li>
                     ))}
                   </ul>
                 </Section>
-                <Section title="⚠️ Risks" color="text-red-600">
+                <Section title={`⚠️ ${ui.risks}`} color="text-red-600">
                   <ul className="list-disc pl-5 space-y-2">
                     {analysis.risks.map((r, i) => (
                       <li key={i}>{r}</li>
                     ))}
                   </ul>
                 </Section>
-                <Section title="✅ Suggestions" color="text-green-600">
+                <Section title={`✅ ${ui.suggestions}`} color="text-green-600">
                   <ul className="list-disc pl-5 space-y-2">
                     {analysis.suggestions.map((s, i) => (
                       <li key={i}>{s}</li>
@@ -211,7 +269,7 @@ const AnalysisModal: React.FC<Props> = ({ analysis, onClose }) => {
           {/* Right Side: Document Viewer */}
           {showDocument && (
             <div className="w-full md:w-1/2 max-h-[70vh] overflow-y-auto border border-gray-200 rounded-xl p-4 text-sm bg-gray-50 text-gray-800 leading-6">
-              <h3 className="text-base font-semibold mb-3">📖 Full Document</h3>
+              <h3 className="text-base font-semibold mb-3">📖 {ui.fullDocument}</h3>
               <pre className="whitespace-pre-wrap">{analysis.fullText}</pre>
             </div>
           )}

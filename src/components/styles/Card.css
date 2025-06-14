@@ -1,0 +1,155 @@
+/* --- Main Container --- */
+.background-container {
+    position: relative;
+    padding: 24px; /* ↓ from 30px */
+    border-radius: 20px; /* ↓ from 25px */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* --- Background Animation --- */
+.background-gradient {
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    background: radial-gradient(circle farthest-side at 0% 100%, rgba(0, 204, 177, 0.9), transparent 60%),
+                radial-gradient(circle farthest-side at 100% 0%, rgba(123, 97, 255, 0.9), transparent 60%),
+                radial-gradient(circle farthest-side at 100% 100%, rgba(255, 196, 20, 1), transparent 70%),
+                radial-gradient(circle farthest-side at 0% 0%, rgba(28, 160, 251, 1), rgba(20, 19, 22, 1));
+    background-size: 300% 300%;
+}
+
+/* --- Developer Card --- */
+.developer-card {
+    position: relative;
+    padding: 28px; /* ↓ from 40px */
+    border-radius: 21px; /* ↓ from 30px */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0px 6px 18px rgba(0, 0, 0, 0.15);
+    width: 240px; /* ↓ from 360px */
+    min-height: 280px; /* ↓ from 400px */
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+    backdrop-filter: blur(15px);
+    border: 1.4px solid rgba(255, 255, 255, 0.25);
+    background-color: #fad0c4;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(200, 225, 255, 0.15));
+    box-shadow: 0px 3px 14px rgba(255, 255, 255, 0.2), 0px 4px 20px rgba(0, 0, 0, 0.1);
+    animation: glowAnimation 3s infinite alternate ease-in-out;
+}
+
+@keyframes glowAnimation {
+    0% {
+        box-shadow: 0px 3px 14px rgba(255, 255, 255, 0.2), 0px 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    100% {
+        box-shadow: 0px 4px 18px rgba(255, 255, 255, 0.3), 0px 6px 26px rgba(0, 0, 0, 0.15);
+    }
+}
+
+.developer-card:hover {
+    transform: scale(1.03);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.35), rgba(180, 210, 255, 0.2));
+}
+
+.developer-card.active {
+    background: #222;
+    color: rgb(207, 83, 83);
+    border: 1.5px solid rgba(255, 255, 255, 0.5);
+    box-shadow: none;
+}
+
+/* --- Image Styling --- */
+.developer-image-container {
+    width: 240px; /* ↓ from 260px */
+    height: 240px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid rgba(255, 255, 255, 0.6); /* ↓ from 6px */
+    background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, width 0.3s, height 0.3s;
+    box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.15); /* ↓ */
+}
+
+.developer-card:hover .developer-image-container {
+    transform: translateY(-9px) scale(1.05); /* ↓ from 10px */
+    box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.developer-card.active .developer-image-container {
+    width: 110px; /* ↓ from 140px */
+    height: 110px;
+    transform: translateY(-35px); /* ↓ from 50px */
+    box-shadow: 0px 2px 7px rgba(0, 0, 0, 0.2);
+}
+
+/* --- Quote Box --- */
+.quote-box {
+    position: absolute;
+    bottom: 20px; /* ↓ from 30px */
+    width: 85%;
+    padding: 10px; /* ↓ from 14px */
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 11px; /* ↓ from 15px */
+    backdrop-filter: blur(9px); /* ↓ from 12px */
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
+    font-size: 14px; /* ↓ from 16px */
+    font-weight: 600;
+    text-align: center;
+    color: white;
+    opacity: 0;
+    transform: translateY(14px); /* ↓ from 20px */
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+.developer-card.active .quote-box {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* --- Floating Dock --- */
+.floating-dock {
+    display: flex;
+    gap: 18px; /* ↓ from 20px */
+   
+    background: rgba(255, 255, 255, 0.15);
+    padding: 12px 20px; /* ↓ from 12px 20px */
+    border-radius: 35px; /* ↓ from 50px */
+    backdrop-filter: blur(12px);
+    box-shadow: 0px 4px 14px rgba(0, 0, 0, 0.25);
+    transition: all 0.3s ease-in-out;
+}
+
+.floating-dock:hover {
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow: 0px 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.dock-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px; /* ↓ from 50px */
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transition: transform 0.3s ease-in-out, background 0.3s ease-in-out;
+}
+
+.dock-item:hover {
+    transform: translateY(-6px); /* ↓ from -6px */
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.dock-icon {
+    font-size: 16px; /* ↓ from 24px */
+    color: #fff;
+}

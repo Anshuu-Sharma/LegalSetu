@@ -1,76 +1,137 @@
-// import React, { useState } from 'react';
-// import Header from './components/Header';
-// import Hero from './components/Hero';
-// import Features from './components/Features';
-// import ChatInterface from './components/ChatInterface';
-// import DocumentUpload from './components/DocumentUpload';
-// import Footer from './components/Footer';
-// import { TranslationProvider } from './contexts/TranslationContext';
-
-// function App() {
-//   const [activeSection, setActiveSection] = useState('home');
-
-//   return (
-//     <TranslationProvider>
-//       <div className="min-h-screen bg-gray-50">
-//         <Header 
-//           activeSection={activeSection} 
-//           setActiveSection={setActiveSection}
-//         />
-
-//         {activeSection === 'home' && (
-//           <>
-//             <Hero setActiveSection={setActiveSection} />
-//             <Features />
-//           </>
-//         )}
-
-//         {activeSection === 'chat' && <ChatInterface />}
-//         {activeSection === 'documents' && <DocumentUpload />}
-        
-//         <Footer />
-//       </div>
-//     </TranslationProvider>
-//   );
-// }
-
-// export default App;
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Hero from './components/Hero';
-import Features from './components/Features';
+import Features from './components/Features.tsx';
 import ChatInterface from './components/ChatInterface';
 import DocumentUpload from './components/DocumentUpload';
+import FormFilling from './components/FormFilling/FormFilling';
 import Footer from './components/Footer';
+import Login from './components/Login';
+import Signup from './components/Signup';
+import AboutUs from './components/AboutUs';
 import { TranslationProvider } from './contexts/TranslationContext';
+import { auth } from './firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
-function App() {
+const App: React.FC = () => {
+  // Firebase authentication state
+  const [user, setUser] = useState<{
+    email: string | null;
+    displayName: string | null;
+    uid: string;
+  } | null>(null);
+
+  // UI state for navigation and modals
   const [activeSection, setActiveSection] = useState('home');
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+
+  // Listen for Firebase auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser({
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          uid: firebaseUser.uid,
+        });
+      } else {
+        setUser(null);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Centralized auth check
+  const requireAuth = (callback: () => void) => {
+    if (!user) {
+      setShowLogin(true);
+    } else {
+      callback();
+    }
+  };
+
+  // Section change handler
+  const handleSectionChange = (section: string) => {
+    if (section === 'home') {
+      setActiveSection('home');
+    } else {
+      requireAuth(() => setActiveSection(section));
+    }
+  };
+
+  // Modal handlers
+  const handleSwitchToSignup = () => {
+    setShowLogin(false);
+    setShowSignup(true);
+  };
+
+  const handleSwitchToLogin = () => {
+    setShowSignup(false);
+    setShowLogin(true);
+  };
+
+  const handleCloseAuth = () => {
+    setShowLogin(false);
+    setShowSignup(false);
+  };
+
+  // Logout handler
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      setUser(null);
+      setActiveSection('home');
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
 
   return (
     <TranslationProvider>
-      <div className="min-h-screen bg-gray-50">
-        <Header activeSection={activeSection} setActiveSection={setActiveSection} />
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Header
+          activeSection={activeSection}
+          setActiveSection={handleSectionChange}
+          onGetStarted={() => requireAuth(() => setActiveSection('chat'))}
+          user={user} 
+          onLogout={handleLogout}
+        />
 
-        {/* Prevents content from being hidden behind header */}
-        <main className="pt-20">
+        {/* Main Content */}
+        <main className="flex-1 mt-16">
           {activeSection === 'home' && (
             <>
-              <Hero setActiveSection={setActiveSection} />
-              <Features />
+              <Hero setActiveSection={handleSectionChange} onGetStarted={() => requireAuth(() => setActiveSection('chat'))} />
+              <Features onGetStarted={() => requireAuth(() => setActiveSection('chat'))} />
             </>
           )}
-
           {activeSection === 'chat' && <ChatInterface />}
           {activeSection === 'documents' && <DocumentUpload />}
+          {activeSection === 'forms' && <FormFilling />}
+          {activeSection === 'about_us' && <AboutUs />}
         </main>
 
         <Footer />
+
+        {/* Auth Modals */}
+        {showLogin && (
+          <Login
+            onSwitchToSignup={handleSwitchToSignup}
+            onClose={handleCloseAuth}
+            onLogin={() => setActiveSection('home')}
+          />
+        )}
+        {showSignup && (
+          <Signup
+            onSwitchToLogin={handleSwitchToLogin}
+            onClose={handleCloseAuth}
+            onSignup={() => setActiveSection('home')}
+          />
+        )}
       </div>
     </TranslationProvider>
   );
-}
+};
 
 export default App;
-

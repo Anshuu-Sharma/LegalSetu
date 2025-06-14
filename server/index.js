@@ -1,4 +1,4 @@
-// server/index.js
+//merged file
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -9,19 +9,17 @@ const fs = require('fs');
 
 const router = express.Router();
 
-// MySQL Pool configuration
+// MySQL Pool configuration (merged settings)
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  ssl: process.env.DB_SSL_CA
-    ? {
-        ca: fs.readFileSync(process.env.DB_SSL_CA),
-        rejectUnauthorized: true
-      }
-    : undefined,
+  ssl: process.env.DB_SSL_CA ? {
+    ca: fs.readFileSync(process.env.DB_SSL_CA),
+    rejectUnauthorized: true
+  } : undefined,
   waitForConnections: true,
   connectionLimit: 20,
   queueLimit: 0,
@@ -30,7 +28,7 @@ const pool = mysql.createPool({
   keepAliveInitialDelay: 60000,
 });
 
-// Database connection verification with retry logic
+// Database connection verification with retry logic (from both versions)
 const verifyConnection = async (attempt = 1) => {
   try {
     const conn = await pool.getConnection();
@@ -48,7 +46,7 @@ const verifyConnection = async (attempt = 1) => {
   }
 };
 
-// Connection keep-alive
+// Combined keep-alive and error handling
 setInterval(async () => {
   try {
     await pool.query('SELECT 1');
@@ -58,7 +56,6 @@ setInterval(async () => {
   }
 }, 5 * 60 * 1000);
 
-// Handle pool errors
 pool.on('connection', (connection) => {
   connection.on('error', (err) => {
     console.error('Connection error:', err.message);
@@ -68,7 +65,71 @@ pool.on('connection', (connection) => {
 // Initialize connection
 verifyConnection();
 
-// Translation endpoint with connection recovery
+// Chat Header Endpoints (from your version)
+router.get('/chat-header/:lang', async (req, res) => {
+  const { lang } = req.params;
+  const headerKeys = [
+    crypto.createHash('sha256').update('chat_header_title').digest('hex'),
+    crypto.createHash('sha256').update('chat_header_subtitle').digest('hex')
+  ];
+
+  try {
+    const [rows] = await pool.execute(
+      `SELECT translated_text FROM translations 
+       WHERE source_text_hash IN (?, ?) 
+       AND target_lang = ?`,
+      [headerKeys[0], headerKeys[1], lang]
+    );
+
+    const result = {
+      title: 'Legal Assistant',
+      subtitle: 'Online • Ready to help'
+    };
+
+    if (rows.length > 0) {
+      result.title = rows[0].translated_text;
+      if (rows.length > 1) result.subtitle = rows[1].translated_text;
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error('Chat header fetch error:', err);
+    res.status(500).json({ 
+      error: 'Failed to fetch chat header',
+      ...(process.env.NODE_ENV === 'development' && { details: err.message })
+    });
+  }
+});
+
+router.post('/chat-header', async (req, res) => {
+  const { lang, title, subtitle } = req.body;
+  
+  if (!lang || !title || !subtitle) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const titleHash = crypto.createHash('sha256').update('chat_header_title').digest('hex');
+  const subtitleHash = crypto.createHash('sha256').update('chat_header_subtitle').digest('hex');
+
+  try {
+    await pool.query(
+      `REPLACE INTO translations 
+       (source_text_hash, source_lang, target_lang, translated_text) 
+       VALUES (?, 'en', ?, ?), (?, 'en', ?, ?)`,
+      [titleHash, lang, title, subtitleHash, lang, subtitle]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Chat header save error:', err);
+    res.status(500).json({ 
+      error: 'Failed to save chat header',
+      ...(process.env.NODE_ENV === 'development' && { details: err.message })
+    });
+  }
+});
+
+// Merged Translation Endpoint (both versions' features)
 router.post('/translate', async (req, res) => {
   const { text, targetLang, sourceLang = 'en' } = req.body;
 
@@ -79,7 +140,7 @@ router.post('/translate', async (req, res) => {
   const hash = crypto.createHash('sha256').update(text, 'utf8').digest('hex');
 
   try {
-    // Attempt to execute query
+    // Check cache with connection recovery
     const [cached] = await pool.execute(
       `SELECT translated_text FROM translations
        WHERE source_text_hash = ?
@@ -103,7 +164,7 @@ router.post('/translate', async (req, res) => {
       });
     }
 
-    // Google Translate API call
+    // Google Translate API call with timeout
     const response = await axios.post(
       `https://translation.googleapis.com/language/translate/v2`,
       {
@@ -124,20 +185,33 @@ router.post('/translate', async (req, res) => {
 
     const translated = response.data.data.translations[0].translatedText;
 
-    // Store in database with retry logic
+    // Combined insert logic with retry and duplicate handling
     let retries = 3;
     while (retries > 0) {
       try {
         await pool.execute(
           `INSERT INTO translations
            (source_text_hash, source_lang, target_lang, translated_text)
-           VALUES (?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+           translated_text = VALUES(translated_text),
+           last_used = CURRENT_TIMESTAMP`,
           [hash, sourceLang, targetLang, translated]
         );
         break;
       } catch (err) {
         retries--;
-        if (retries === 0) throw err;
+        if (err.code === 'ER_DUP_ENTRY' || retries === 0) {
+          const [existing] = await pool.execute(
+            `SELECT translated_text FROM translations
+             WHERE source_text_hash = ? AND source_lang = ? AND target_lang = ?`,
+            [hash, sourceLang, targetLang]
+          );
+          return res.json({
+            translation: existing[0]?.translated_text || translated,
+            cached: true
+          });
+        }
         console.log(`Retrying insert (${retries} attempts remaining)...`);
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
@@ -148,15 +222,9 @@ router.post('/translate', async (req, res) => {
       cached: false
     });
   } catch (err) {
-    console.error('Translation error:');
-    console.error('Request:', req.body);
-    console.error('Error details:', {
-      message: err.message,
-      code: err.code,
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-    });
-
-    // Handle specific MySQL errors
+    console.error('Translation error:', err);
+    
+    // Connection recovery logic
     if (err.code === 'PROTOCOL_CONNECTION_LOST') {
       console.log('Attempting to reconnect to database...');
       await verifyConnection();

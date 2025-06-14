@@ -6,9 +6,19 @@ interface Props {
   onFiles: (files: File[]) => void;
   dragActive: boolean;
   setDragActive: (val: boolean) => void;
+  uploadLabel: string;
+  chooseFileLabel: string;
+  fileTypesLabel: string;
 }
 
-const FileUploader: React.FC<Props> = ({ onFiles, dragActive, setDragActive }) => {
+const FileUploader: React.FC<Props> = ({
+  onFiles,
+  dragActive,
+  setDragActive,
+  uploadLabel,
+  chooseFileLabel,
+  fileTypesLabel
+}) => {
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(e.type === 'dragenter' || e.type === 'dragover');
@@ -35,7 +45,7 @@ const FileUploader: React.FC<Props> = ({ onFiles, dragActive, setDragActive }) =
     >
       <div className="text-center flex flex-col items-center justify-center gap-3">
         <Upload className="w-14 h-14 text-blue-600 mb-2" />
-        <h3 className="text-lg font-semibold text-gray-800">Upload Document</h3>
+        <h3 className="text-lg font-semibold text-gray-800">{uploadLabel}</h3>
 
         <input
           type="file"
@@ -50,10 +60,10 @@ const FileUploader: React.FC<Props> = ({ onFiles, dragActive, setDragActive }) =
           htmlFor="fileInput"
           className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg cursor-pointer hover:bg-blue-700 transition"
         >
-          Choose File
+          {chooseFileLabel}
         </label>
 
-        <p className="text-xs text-gray-500 mt-1">PDF, DOC, JPG, PNG (Max 10MB)</p>
+        <p className="text-xs text-gray-500 mt-1">{fileTypesLabel}</p>
       </div>
     </motion.div>
   );

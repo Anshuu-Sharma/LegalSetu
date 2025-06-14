@@ -1,10 +1,10 @@
 import React from 'react';
-import { 
-  MessageSquare, 
-  FileText, 
-  Search, 
-  Languages, 
-  Shield, 
+import {
+  MessageSquare,
+  FileText,
+  Search,
+  Languages,
+  Shield,
   Clock,
   Mic,
   Brain,
@@ -14,7 +14,11 @@ import {
 import { motion } from 'framer-motion';
 import LocalizedText from './LocalizedText';
 
-const Features: React.FC = () => {
+interface FeaturesProps {
+  onGetStarted?: () => void;
+}
+
+const Features: React.FC<FeaturesProps> = ({ onGetStarted }) => {
   const features = [
     {
       icon: MessageSquare,
@@ -71,107 +75,65 @@ const Features: React.FC = () => {
       description: 'AI-powered next steps and legal action recommendations.',
       color: 'from-teal-500 to-teal-600',
       bgColor: 'bg-teal-50'
-    },
+    }
   ];
 
   return (
-    <section className="py-24 bg-white relative overflow-hidden">
-      {/* Background Elements */}
-      <div className="absolute inset-0">
-        <div className="absolute top-20 right-10 w-72 h-72 bg-blue-100/50 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 left-10 w-96 h-96 bg-purple-100/50 rounded-full blur-3xl"></div>
+    <section className="relative py-16 bg-white overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-[120vw] h-96 bg-gradient-to-br from-blue-50 via-white to-green-50 opacity-60 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.5 }}
           viewport={{ once: true }}
-          className="text-center mb-20"
+          className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 text-center mb-8"
         >
-          <div className="inline-flex items-center px-4 py-2 bg-blue-50 rounded-full border border-blue-200 mb-6">
-            <Sparkles className="w-4 h-4 text-blue-600 mr-2" />
-            <span className="text-sm font-medium text-blue-700">
-              <LocalizedText text="Comprehensive Features" />
-            </span>
-          </div>
-          
-          <h2 className="text-4xl md:text-6xl font-bold mb-6">
-            <span className="bg-gradient-to-r from-gray-900 to-blue-900 bg-clip-text text-transparent">
-              <LocalizedText text="Comprehensive Legal" />
-            </span>
-            <br />
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              <LocalizedText text="Solutions" />
-            </span>
-          </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            <LocalizedText text="Experience the future of legal assistance with our AI-powered platform designed specifically for Indian legal system and languages." />
-          </p>
-        </motion.div>
+          <Sparkles className="inline-block w-8 h-8 text-blue-500 mr-2" />
+          <LocalizedText text="Platform Features" />
+        </motion.h2>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-20">
-          {features.map((feature, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              viewport={{ once: true }}
-              whileHover={{ y: -8, scale: 1.02 }}
-              className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 hover:border-blue-200"
-            >
-              <div className={`w-14 h-14 rounded-2xl bg-gradient-to-r ${feature.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                <feature.icon className="w-7 h-7 text-white" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">
-                <LocalizedText text={feature.title} />
-              </h3>
-              <p className="text-gray-600 leading-relaxed">
-                <LocalizedText text={feature.description} />
-              </p>
-            </motion.div>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+          {features.map((feature, index) => {
+            const Icon = feature.icon;
+            return (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 25 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.05 * index }}
+                viewport={{ once: true }}
+                className={`rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center text-center ${feature.bgColor}`}
+              >
+                <span
+                  className={`mb-4 inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} text-white shadow-md`}
+                >
+                  <Icon className="w-7 h-7" />
+                </span>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{feature.title}</h3>
+                <p className="text-gray-600 text-sm">{feature.description}</p>
+              </motion.div>
+            );
+          })}
         </div>
 
-        {/* CTA Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
-          className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 rounded-3xl p-12 text-center text-white overflow-hidden"
-        >
-          {/* Background Pattern */}
-          <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,.1)_50%,transparent_75%,transparent_100%)] bg-[length:20px_20px] opacity-20"></div>
-          
-          <div className="relative">
-            <h3 className="text-3xl md:text-4xl font-bold mb-6">
-              <LocalizedText text="Ready to Get Started?" />
-            </h3>
-            <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto leading-relaxed">
-              <LocalizedText text="Join thousands of users who trust LegalBot AI for their legal needs. Get instant answers to your legal questions today." />
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <motion.button 
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                className="group bg-white text-blue-600 px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center"
-              >
-                <LocalizedText text="Start Free Trial" />
-                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </motion.button>
-              <motion.button 
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-2xl font-bold text-lg border border-white/20 hover:bg-white/20 transition-all duration-300"
-              >
-                <LocalizedText text="Watch Demo" />
-              </motion.button>
-            </div>
+        {onGetStarted && (
+          <div className="mt-12 flex justify-center">
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={onGetStarted}
+              className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-blue-600 to-green-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all text-lg"
+            >
+              <LocalizedText text="Get Started" />
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </motion.button>
           </div>
-        </motion.div>
+        )}
       </div>
     </section>
   );

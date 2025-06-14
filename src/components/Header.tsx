@@ -1,7 +1,7 @@
-import React, { useRef, useEffect } from 'react';
-import { Scale, Menu, X, Sparkles, ChevronDown, Globe } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { Scale, Menu, X, Sparkles, ChevronDown, Globe, UserCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useTranslation } from '../contexts/TranslationContext';
+import { useTranslation } from '../contexts/TranslationContext'; // Remove .tsx for consistency
 import LocalizedText from './LocalizedText';
 
 const languages = [
@@ -21,189 +21,247 @@ const languages = [
   { code: 'ur', name: 'اُردُو' }
 ];
 
-
+// Merge all props from both files
 interface HeaderProps {
   activeSection: string;
   setActiveSection: (section: string) => void;
+  onGetStarted?: () => void;
+  user?: any;
+  onLogout?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ activeSection, setActiveSection }) => {
+const Header: React.FC<HeaderProps> = ({
+  activeSection,
+  setActiveSection,
+  onGetStarted,
+  user,
+  onLogout
+}) => {
   const { language, setLanguage } = useTranslation();
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
-  const [isLanguageOpen, setIsLanguageOpen] = React.useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsLanguageOpen(false);
       }
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
     };
-    if (isLanguageOpen) document.addEventListener('mousedown', handleClickOutside);
+    if (isLanguageOpen || profileOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isLanguageOpen]);
+  }, [isLanguageOpen, profileOpen]);
 
+  // Merge navigation from both files
   const navigation = [
     { name: 'Home', id: 'home' },
     { name: 'AI Chat', id: 'chat' },
     { name: 'Documents', id: 'documents' },
-    { name: 'Case Laws', id: 'cases' },
-    { name: 'Forms', id: 'forms' },
+    { name: 'Case Laws', id: 'cases' }, // From File 1
+    { name: 'About Us', id: 'about_us' }, // From File 2
+    { name: 'Forms', id: 'forms' }
   ];
 
+  // Helper to get display name or email
+  const getUserLabel = () =>
+    user
+      ? user.displayName
+        ? user.displayName
+        : user.email
+      : '';
+
   return (
-    <motion.header
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm"
-    >
-      <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
-          {/* Branding */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center space-x-3"
-          >
-            <div className="bg-gradient-to-br from-blue-600 to-purple-700 p-3 rounded-2xl shadow-lg">
-              <Scale className="h-7 w-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-700 bg-clip-text text-transparent">
-                LegalBot AI
-              </h1>
-              <p className="text-xs text-gray-500 font-medium">Powered by AI</p>
-            </div>
-          </motion.div>
+    <header className="w-full bg-white shadow-md z-50">
+      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        {/* Branding */}
+        <div className="flex items-center space-x-2">
+          <Scale className="text-blue-600" />
+          <span className="font-bold text-lg">LegalBot AI</span>
+          <span className="text-xs text-gray-400 ml-2">Powered by AI</span>
+        </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1">
-            {navigation.map((item, index) => (
-              <motion.button
-                key={item.id}
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                onClick={() => setActiveSection(item.id)}
-                className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
-                  activeSection === item.id
-                    ? 'text-blue-600 bg-blue-50'
-                    : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
-                }`}
-              >
-                {/* UPDATED: Wrap with LocalizedText */}
-                <LocalizedText text={item.name} />
-                {activeSection === item.id && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute inset-0 bg-blue-50 rounded-xl border border-blue-200"
-                    style={{ zIndex: -1 }}
-                  />
-                )}
-              </motion.button>
-            ))}
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center space-x-2">
+          {navigation.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveSection(item.id)}
+              className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                activeSection === item.id
+                  ? 'text-blue-600 bg-blue-50'
+                  : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+              }`}
+            >
+              {/* Optionally wrap with LocalizedText if needed */}
+              {item.name}
+              {activeSection === item.id && (
+                <motion.div
+                  className="absolute left-1/2 -bottom-1 w-2 h-2 bg-blue-600 rounded-full"
+                  layoutId="nav-underline"
+                />
+              )}
+            </button>
+          ))}
 
-            {/* Language Dropdown */}
-            <div className="relative ml-4" ref={dropdownRef}>
+          {/* Language Dropdown */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setIsLanguageOpen((open) => !open)}
+              className="flex items-center px-4 py-2 text-gray-600 hover:text-blue-600 rounded-xl transition-colors font-medium"
+            >
+              <Globe className="mr-2 w-4 h-4" />
+              {languages.find((lang) => lang.code === language)?.name || 'Select language'}
+              <ChevronDown className="ml-1 w-4 h-4" />
+            </button>
+            {isLanguageOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-xl z-10">
+                {languages.map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => {
+                      setLanguage(lang.code);
+                      setIsLanguageOpen(false);
+                    }}
+                    className={`w-full px-4 py-3 text-sm text-left ${
+                      language === lang.code
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    } transition-colors rounded-xl`}
+                  >
+                    {lang.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Profile/Logout or Get Started */}
+          {user ? (
+            <div className="relative" ref={profileRef}>
               <button
-                onClick={() => setIsLanguageOpen(!isLanguageOpen)}
-                className="flex items-center px-4 py-2 text-gray-600 hover:text-blue-600 rounded-xl transition-colors font-medium"
+                onClick={() => setProfileOpen((open) => !open)}
+                className="flex items-center focus:outline-none"
+                title={getUserLabel()}
               >
-                <Globe className="w-5 h-5 mr-2" />
-                {languages.find(lang => lang.code === language)?.name || 'Select language'}
-                <ChevronDown className="w-4 h-4 ml-2" />
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt="Profile"
+                    className="w-8 h-8 rounded-full mr-2"
+                  />
+                ) : (
+                  <UserCircle className="w-8 h-8 text-gray-400 mr-2" />
+                )}
+                <span className="text-sm font-medium">{getUserLabel()}</span>
+                <ChevronDown className="ml-1 w-4 h-4" />
               </button>
-              {isLanguageOpen && (
-                <div className="absolute right-0 mt-2 w-56 max-h-[70vh] overflow-y-auto bg-white rounded-xl shadow-lg border border-gray-200/50 z-50">
-                  {languages.map((lang) => (
-                    <button
-                      key={lang.code}
-                      onClick={() => {
-                        setLanguage(lang.code);
-                        setIsLanguageOpen(false);
-                      }}
-                      className={`w-full px-4 py-3 text-sm text-left ${
-                        language === lang.code
-                          ? 'bg-blue-50 text-blue-600'
-                          : 'text-gray-600 hover:bg-gray-50'
-                      } transition-colors rounded-xl`}
-                    >
-                      {lang.name}
-                    </button>
-                  ))}
+              {profileOpen && (
+                <div className="absolute right-0 mt-2 w-40 bg-white shadow-lg rounded-xl z-10">
+                  <div className="px-4 py-3 text-gray-700">{getUserLabel()}</div>
+                  <button
+                    onClick={() => {
+                      setProfileOpen(false);
+                      onLogout && onLogout();
+                    }}
+                    className="w-full px-4 py-3 text-center text-red-500 bg-white hover:bg-red-500 hover:text-white rounded-b-xl"
+                  >
+                    Logout
+                  </button>
                 </div>
               )}
             </div>
+          ) : (
+            onGetStarted && (
+              <button
+                onClick={onGetStarted}
+                className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+              >
+                Get Started
+              </button>
+            )
+          )}
+        </nav>
 
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="ml-2 bg-gradient-to-r from-blue-600 to-purple-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              <LocalizedText text="Get Started" />
-            </motion.button>
-          </div>
+        {/* Mobile Menu Button */}
+        <button
+          className="md:hidden text-gray-600 hover:text-blue-600 p-2 rounded-xl hover:bg-gray-50 transition-colors"
+          onClick={() => setMobileMenuOpen((open) => !open)}
+        >
+          {mobileMenuOpen ? <X /> : <Menu />}
+        </button>
+      </div>
 
-          {/* Mobile Menu */}
-          <div className="md:hidden">
+      {/* Mobile Navigation */}
+      {mobileMenuOpen && (
+        <div className="md:hidden px-4 pb-4">
+          {navigation.map((item) => (
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-gray-600 hover:text-blue-600 p-2 rounded-xl hover:bg-gray-50 transition-colors"
+              key={item.id}
+              onClick={() => {
+                setActiveSection(item.id);
+                setMobileMenuOpen(false);
+              }}
+              className={`block w-full text-left px-4 py-3 rounded-xl text-sm font-medium ${
+                activeSection === item.id
+                  ? 'bg-blue-50 text-blue-600 border border-blue-200'
+                  : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+              }`}
             >
-              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {item.name}
             </button>
-          </div>
-        </div>
-
-        {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="md:hidden border-t border-gray-200/50 bg-white/90 backdrop-blur-xl rounded-b-2xl"
+          ))}
+          {/* Language Selector */}
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mt-2"
           >
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              {navigation.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveSection(item.id);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`block w-full text-left px-4 py-3 rounded-xl text-sm font-medium ${
-                    activeSection === item.id
-                      ? 'bg-blue-50 text-blue-600 border border-blue-200'
-                      : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
-                  }`}
-                >
-                  {/* UPDATED: Wrap with LocalizedText */}
-                  <LocalizedText text={item.name} />
-                </button>
-              ))}
-              <div className="px-4 py-3">
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  <LocalizedText text="Select Language:" />
-                </label>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {languages.map((lang) => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button className="w-full mt-4 bg-gradient-to-r from-blue-600 to-purple-700 text-white px-4 py-3 rounded-xl font-semibold shadow-lg">
-                <LocalizedText text="Get Started" />
+            {languages.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.name}
+              </option>
+            ))}
+          </select>
+          {/* Mobile Profile/Logout or Get Started */}
+          {user ? (
+            <div className="mt-4 flex items-center space-x-2">
+              {user.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt="Profile"
+                  className="w-8 h-8 rounded-full"
+                />
+              ) : (
+                <UserCircle className="w-8 h-8 text-gray-400" />
+              )}
+              <span className="text-sm font-medium">{getUserLabel()}</span>
+              <button
+                onClick={onLogout}
+                className="ml-auto px-4 py-2 text-red-500 bg-white hover:bg-red-500 hover:text-white rounded-xl"
+              >
+                Logout
               </button>
             </div>
-          </motion.div>
-        )}
-      </nav>
-    </motion.header>
+          ) : (
+            onGetStarted && (
+              <button
+                onClick={onGetStarted}
+                className="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+              >
+                Get Started
+              </button>
+            )
+          )}
+        </div>
+      )}
+    </header>
   );
 };
 

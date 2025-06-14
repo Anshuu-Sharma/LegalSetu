@@ -1,5 +1,4 @@
 // src/services/api.ts
-
 export interface ApiResponse<T = any> {
   success: boolean;
   error?: string;
@@ -35,6 +34,28 @@ export interface Document {
   s3_url?: string;
 }
 
+export interface FormField {
+  id: string;
+  label: string;
+  type: string;
+  rect: number[];
+  pdfCoordinates?: number[];
+  imageCoordinates?: number[];
+  required?: boolean;
+}
+
+export interface FormUploadResponse {
+  success: boolean;
+  formId: string;
+  formFields: FormField[];
+  imageHeight: number;
+  imageWidth: number;
+  pdfHeight: number;
+  pdfWidth: number;
+  scaleFactor: { x: number; y: number };
+  originalName: string;
+}
+
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 function getAuthHeaders(): HeadersInit {
@@ -43,7 +64,7 @@ function getAuthHeaders(): HeadersInit {
 }
 
 export const authAPI = {
-  async login(credentials: { email: string; password: string }): Promise<ApiResponse<{ token: string; user: User }>> {
+  async login(credentials: { email: string; password: string }): Promise<ApiResponse<{ user: User; token: string }>> {
     const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -57,7 +78,7 @@ export const authAPI = {
     return data;
   },
 
-  async register(userData: { email: string; password: string; name: string; preferredLanguage?: string }): Promise<ApiResponse<{ token: string; user: User }>> {
+  async register(userData: { email: string; password: string; name: string; preferredLanguage?: string }): Promise<ApiResponse<{ user: User; token: string }>> {
     const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -77,7 +98,7 @@ export const authAPI = {
     window.location.href = '/';
   },
 
-  async getCurrentUser(): Promise<ApiResponse<{ user: User }>> {
+  async getCurrentUser(): Promise<ApiResponse<User>> {
     const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }
     });
@@ -86,7 +107,7 @@ export const authAPI = {
 };
 
 export const documentAPI = {
-  async uploadDocument(formData: FormData): Promise<ApiResponse<{ document: Document }>> {
+  async uploadDocument(formData: FormData): Promise<ApiResponse<Document>> {
     const response = await fetch(`${API_BASE_URL}/api/documents/upload`, {
       method: 'POST',
       body: formData,
@@ -95,7 +116,7 @@ export const documentAPI = {
     return response.json();
   },
 
-  async getMyDocuments(params: { page?: number; limit?: number; status?: string; search?: string; documentType?: string } = {}): Promise<ApiResponse<{ documents: Document[]; pagination: any }>> {
+  async getMyDocuments(params: { page?: number; limit?: number; status?: string; search?: string; documentType?: string } = {}): Promise<ApiResponse<{ documents: Document[]; total: number; pages: number }>> {
     const queryString = new URLSearchParams(params as Record<string, string>).toString();
     const response = await fetch(`${API_BASE_URL}/api/documents/my-documents?${queryString}`, {
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }
@@ -103,7 +124,7 @@ export const documentAPI = {
     return response.json();
   },
 
-  async getDocument(documentId: number | string): Promise<ApiResponse<{ document: Document }>> {
+  async getDocument(documentId: number | string): Promise<ApiResponse<Document>> {
     const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}`, {
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }
     });
@@ -125,6 +146,58 @@ export const documentAPI = {
     const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}`, {
       method: 'DELETE',
       headers: getAuthHeaders()
+    });
+    return response.json();
+  }
+};
+
+export const formAPI = {
+  uploadForm: async (formData: FormData): Promise<FormUploadResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/forms/upload`, {
+      method: 'POST',
+      body: formData,
+      headers: getAuthHeaders()
+    });
+    return response.json();
+  },
+
+  speakField: async (text: string, language: string): Promise<ApiResponse<{ audioUrl: string }>> => {
+    const response = await fetch(`${API_BASE_URL}/api/forms/speak`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, language })
+    });
+    return response.json();
+  },
+
+  recognizeSpeech: async (audioData: FormData): Promise<ApiResponse<{ transcription: string }>> => {
+    const response = await fetch(`${API_BASE_URL}/api/forms/recognize`, {
+      method: 'POST',
+      body: audioData,
+      headers: getAuthHeaders()
+    });
+    return response.json();
+  },
+
+  fillForm: async (
+    formId: string, 
+    formData: Record<string, string>, 
+    formFields: FormField[], 
+    conversionData: {
+      imageHeight: number;
+      pdfHeight: number;
+      scaleFactor: { x: number; y: number };
+    }
+  ): Promise<ApiResponse<{ downloadUrl: string }>> => {
+    const response = await fetch(`${API_BASE_URL}/api/forms/fill`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        formId, 
+        formData, 
+        formFields, 
+        ...conversionData 
+      })
     });
     return response.json();
   }
