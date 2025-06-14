@@ -3,3 +3,4 @@ node_modules
 # /server/ca.pem
 # .env
 .env
+server/.env
