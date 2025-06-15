@@ -1,4 +1,3 @@
-//merged
 require('dotenv').config();
 
 const express = require('express');
@@ -84,9 +83,7 @@ Here is the document:
 """${text.slice(0, 100000)}"""`
       }]
     }],
-    generationConfig: {
-      temperature: 0 // For maximum consistency
-    }
+    generationConfig: { temperature: 0 }
   };
 
   const response = await axios.post(url, body, {
@@ -94,7 +91,7 @@ Here is the document:
   });
 
   let raw = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-  raw = raw.replace(/``````/g, '').replace(/``````/g, '').trim();
+  raw = raw.replace(/``````/g, '').trim();
   const firstBrace = raw.indexOf('{');
   const lastBrace = raw.lastIndexOf('}');
   if (firstBrace !== -1 && lastBrace !== -1) {
@@ -279,9 +276,10 @@ router.post('/assist', async (req, res) => {
   }
 });
 
-// --- Chatbot endpoint for document-specific Q&A ---
+// --- Chatbot endpoint for document-specific Q&A (with translation) ---
 router.post('/chat', async (req, res) => {
-  const { query, fullText, metadata } = req.body;
+  const { query, fullText, metadata, language = 'en' } = req.body;
+
   if (!query || !fullText || !metadata) {
     return res.status(400).json({ error: 'Missing parameters' });
   }
@@ -334,8 +332,19 @@ Full document text (only search if needed):
       { headers: { 'Content-Type': 'application/json' } }
     );
 
-    const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    res.json({ reply: rawText.trim(), pages: matchedPages });
+    let reply = response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+
+    // Translate reply if needed
+    if (language !== 'en') {
+      try {
+        reply = (await translate.translate(reply, language))[0];
+      } catch (translateErr) {
+        console.error('Translation error:', translateErr);
+        // Proceed without translation if error occurs
+      }
+    }
+
+    res.json({ reply, pages: matchedPages });
   } catch (err) {
     console.error('🔥 Chat API Error:', err.response?.data || err.message || err);
     res.status(500).json({ error: 'Chat query failed' });

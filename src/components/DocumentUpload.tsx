@@ -92,7 +92,7 @@ const DocumentUpload: React.FC = () => {
         formData.append('file', file);
         formData.append('language', language);
 
-        const response = await fetch('http://localhost:5000/api/analyze', {
+        const response = await fetch('http://localhost:4000/api/analyze', {
           method: 'POST',
           body: formData,
         });
@@ -136,7 +136,7 @@ const DocumentUpload: React.FC = () => {
   // Fetch analysis by analysisId when viewing
   const fetchAnalysisById = async (analysisId: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/analysis/${analysisId}?lang=${language}`);
+      const response = await fetch(`http://localhost:4000/api/analysis/${analysisId}?lang=${language}`);
       if (!response.ok) throw new Error('Failed to fetch analysis');
       const data = await response.json();
 
