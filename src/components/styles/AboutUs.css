@@ -1,5 +1,8 @@
 /* --- Meet the Developer Section --- */
 /* --- Hide initially for scroll effect --- */
+
+@import url('https://fonts.googleapis.com/css2?family=Fugaz+One&display=swap');
+
 .meet-developer {
     opacity: 0;
     transform: translateY(50px);
@@ -28,8 +31,8 @@
 /* --- Professional Heading (Luxury Look) --- */
 .tagline {
     font-size: 55px;
-    font-weight: 700;
-    font-family: "Playfair Display", serif;
+    font-weight: 400;
+    font-family: "Fugaz One", sans-serif;
     text-transform: uppercase;
     letter-spacing: 2px;
     color: #b8860b;
@@ -46,6 +49,7 @@
     content: "";
     width: 100px;
     height: 4px;
+    margin-bottom: 6px;
     background: linear-gradient(to right, #c89b3c, #b8860b);
     position: absolute;
     bottom: -6px;

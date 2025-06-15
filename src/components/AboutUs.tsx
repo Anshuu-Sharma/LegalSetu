@@ -4,11 +4,14 @@ import React, { useEffect, useState } from "react";
 import DeveloperCard from "./DeveloperCard.tsx";
 import "./styles/AboutUs.css";
 import { useTranslation } from "../contexts/TranslationContext";
+import srishtiImg from '../images/srishti.png'
+import anshuImg from '../images/anshu.png'
+import shubhamImg from '../images/shubham.png'
 
 const developers = [
   {
     name: "Srishti Ahuja",
-    img: "/images/shubham.png",
+    img: srishtiImg,
     quote:
       "Blending AI and law, I build tools that simplify legal complexities — from document analyzers to scam-detection solutions.",
     github: "https://github.com/Srishti-Ahuja14/",
@@ -17,7 +20,7 @@ const developers = [
   },
   {
     name: "Ansh Sharma",
-    img: "/images/ishika.jpg",
+    img: anshuImg,
     quote:
       "Designing clean, intuitive interfaces that make legal tech accessible to all — with empathy and elegance.",
     github: "https://github.com/Anshuu-Sharma",
@@ -26,7 +29,7 @@ const developers = [
   },
   {
     name: "Shubham Garg",
-    img: "/images/aman.jpg",
+    img: shubhamImg,
     quote:
       "I'm Shubham Garg, the mind behind GauZen. Passionate about AI & agriculture, I strive to make cattle farming smarter.",
     github: "https://github.com/Immortal-CyberGuy/",

@@ -45,7 +45,7 @@ const FormFilling: React.FC = () => {
       formDataToSend.append('form', file);
       formDataToSend.append('language', language);
 
-      const response = await fetch('/api/forms/upload', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/forms/upload`, {
         method: 'POST',
         body: formDataToSend,
       });

@@ -28,11 +28,12 @@
     padding: 28px; /* ↓ from 40px */
     border-radius: 21px; /* ↓ from 30px */
     display: flex;
+    justify-content: center;
     flex-direction: column;
     align-items: center;
     box-shadow: 0px 6px 18px rgba(0, 0, 0, 0.15);
     width: 240px; /* ↓ from 360px */
-    min-height: 280px; /* ↓ from 400px */
+    min-height: 380px; /* ↓ from 400px */
     cursor: pointer;
     transition: all 0.3s ease-in-out;
     backdrop-filter: blur(15px);
@@ -64,8 +65,31 @@
     box-shadow: none;
 }
 
+
+.developer-name {
+
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.85);
+    border: 1px solid black;
+    padding: 6px 16px;
+    border-radius: 12px;
+    margin-top: 13px;
+    font-weight: bold;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    pointer-events: none;
+    text-align: center;
+    width: max-content;
+    max-width: 90%;
+    z-index: 2;
+  }
+  
+
 /* --- Image Styling --- */
 .developer-image-container {
+    position: relative;
     width: 240px; /* ↓ from 260px */
     height: 240px;
     border-radius: 50%;
@@ -147,6 +171,7 @@
 .dock-item:hover {
     transform: translateY(-6px); /* ↓ from -6px */
     background: rgba(255, 255, 255, 0.3);
+    scale: 1.2;
 }
 
 .dock-icon {
