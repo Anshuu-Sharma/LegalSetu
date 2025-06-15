@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Scale, Menu, X, Sparkles, ChevronDown, Globe, UserCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useTranslation } from '../contexts/TranslationContext'; // Remove .tsx for consistency
+import { useTranslation } from '../contexts/TranslationContext'; 
 import LocalizedText from './LocalizedText';
 
 const languages = [
@@ -64,8 +64,8 @@ const Header: React.FC<HeaderProps> = ({
     { name: 'Home', id: 'home' },
     { name: 'AI Chat', id: 'chat' },
     { name: 'Documents', id: 'documents' },
-    { name: 'Case Laws', id: 'cases' }, // From File 1
-    { name: 'About Us', id: 'about_us' }, // From File 2
+    { name: 'Case Laws', id: 'cases' }, 
+    { name: 'About Us', id: 'about_us' }, 
     { name: 'Forms', id: 'forms' }
   ];
 
@@ -78,36 +78,57 @@ const Header: React.FC<HeaderProps> = ({
       : '';
 
   return (
+    <motion.header
+          initial={{ y: -100 }}
+          animate={{ y: 0 }}
+          className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm"
+        >
+
+        
     <header className="w-full bg-white shadow-md z-50">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-        {/* Branding */}
-        <div className="flex items-center space-x-2">
-          <Scale className="text-blue-600" />
-          <span className="font-bold text-lg">LegalBot AI</span>
-          <span className="text-xs text-gray-400 ml-2">Powered by AI</span>
-        </div>
+                  {/* Branding */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center space-x-3"
+                  >
+                    <div className="bg-gradient-to-br from-blue-600 to-purple-700 p-3 rounded-2xl shadow-lg">
+                      <Scale className="h-7 w-7 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-700 bg-clip-text text-transparent">
+                        LegalBot AI
+                      </h1>
+                      <p className="text-xs text-gray-500 font-medium">Powered by AI</p>
+                    </div>
+                  </motion.div>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-2">
-          {navigation.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveSection(item.id)}
-              className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
-                activeSection === item.id
-                  ? 'text-blue-600 bg-blue-50'
-                  : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
-              }`}
-            >
-              {/* Optionally wrap with LocalizedText if needed */}
-              {item.name}
-              {activeSection === item.id && (
-                <motion.div
-                  className="absolute left-1/2 -bottom-1 w-2 h-2 bg-blue-600 rounded-full"
-                  layoutId="nav-underline"
-                />
-              )}
-            </button>
+          {navigation.map((item, index) => (
+                  <motion.button
+                    key={item.id}
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    onClick={() => setActiveSection(item.id)}
+                    className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                      activeSection === item.id
+                        ? 'text-blue-600 bg-blue-50'
+                        : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {/* UPDATED: Wrap with LocalizedText */}
+                    <LocalizedText text={item.name} />
+                    {activeSection === item.id && (
+                      <motion.div
+                        layoutId="activeTab"
+                        className="absolute inset-0 bg-blue-50 rounded-xl border border-blue-200"
+                        style={{ zIndex: -1 }}
+                      />
+                    )}
+                  </motion.button>
           ))}
 
           {/* Language Dropdown */}
@@ -179,12 +200,13 @@ const Header: React.FC<HeaderProps> = ({
             </div>
           ) : (
             onGetStarted && (
-              <button
-                onClick={onGetStarted}
-                className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
-              >
-                Get Started
-              </button>
+              <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="ml-2 bg-gradient-to-r from-blue-600 to-purple-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                          >
+                            <LocalizedText text="Get Started" />
+                          </motion.button>
             )
           )}
         </nav>
@@ -200,6 +222,11 @@ const Header: React.FC<HeaderProps> = ({
 
       {/* Mobile Navigation */}
       {mobileMenuOpen && (
+        <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="md:hidden border-t border-gray-200/50 bg-white/90 backdrop-blur-xl rounded-b-2xl"
+                  >
         <div className="md:hidden px-4 pb-4">
           {navigation.map((item) => (
             <button
@@ -214,21 +241,26 @@ const Header: React.FC<HeaderProps> = ({
                   : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
               }`}
             >
-              {item.name}
+              <LocalizedText text={item.name} />
             </button>
           ))}
           {/* Language Selector */}
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mt-2"
-          >
-            {languages.map((lang) => (
-              <option key={lang.code} value={lang.code}>
-                {lang.name}
-              </option>
-            ))}
-          </select>
+           <div className="px-4 py-3">
+                          <label className="text-sm font-medium text-gray-700 mb-2 block">
+                            <LocalizedText text="Select Language:" />
+                          </label>
+                          <select
+                            value={language}
+                            onChange={(e) => setLanguage(e.target.value)}
+                            className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            {languages.map((lang) => (
+                              <option key={lang.code} value={lang.code}>
+                                {lang.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
           {/* Mobile Profile/Logout or Get Started */}
           {user ? (
             <div className="mt-4 flex items-center space-x-2">
@@ -260,8 +292,10 @@ const Header: React.FC<HeaderProps> = ({
             )
           )}
         </div>
+          </motion.div>
       )}
     </header>
+    </motion.header>
   );
 };
 
