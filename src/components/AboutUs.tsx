@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import DeveloperCard from "./DeveloperCard.tsx";
 import "./styles/AboutUs.css";
+import { useTranslation } from "../contexts/TranslationContext";
 
 const developers = [
   {
@@ -36,6 +37,14 @@ const developers = [
 
 const AboutUs = () => {
   const [visible, setVisible] = useState(false);
+  const { t, language } = useTranslation();
+
+  // State for translated strings
+  const [translated, setTranslated] = useState({
+    tagline: "",
+    description: "",
+    quotes: developers.map(() => ""),
+  });
 
   useEffect(() => {
     const handleScroll = () => {
@@ -52,18 +61,32 @@ const AboutUs = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Translate all text when language changes
+  useEffect(() => {
+    const translateAll = async () => {
+      const tagline = await t("Meet the developers");
+      const description = await t(
+        "We’re not just building tools — we’re shaping the future of legal empowerment. With AI-driven clarity and multilingual support, we make justice more accessible."
+      );
+      const quotes = await Promise.all(developers.map((dev) => t(dev.quote)));
+      setTranslated({ tagline, description, quotes });
+    };
+    translateAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language, t]);
+
   return (
     <section className={`meet-developer ${visible ? "show" : ""}`}>
-      <h2 className="tagline">Meet the developers</h2>
-      <p className="description">
-        We’re not just building tools — we’re shaping the future of legal
-        empowerment. With AI-driven clarity and multilingual support, we make
-        justice more accessible.
-      </p>
+      <h2 className="tagline">{translated.tagline}</h2>
+      <p className="description">{translated.description}</p>
 
       <div className="developer-cards-container">
         {developers.map((dev, index) => (
-          <DeveloperCard key={index} {...dev} />
+          <DeveloperCard
+            key={index}
+            {...dev}
+            quote={translated.quotes[index]}
+          />
         ))}
       </div>
     </section>
