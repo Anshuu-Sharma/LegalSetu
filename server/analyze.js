@@ -107,29 +107,52 @@ Here is the document:
 // --- Gemini API call for chatbot ---
 const callGeminiChat = async (query, history = []) => {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+
   const context = history.length > 0
-    ? `Previous conversation:\n${history.join('\n')}\n\nCurrent question: ${query}`
-    : query;
+    ? `Chat history to understand context:\n${history.join('\n')}\n\nUser's current question: ${query}`
+    : `User's question: ${query}`;
+
+  const prompt = `
+You are a highly reliable legal assistant with expert knowledge of Indian laws and the Constitution. Your purpose is to **help and protect the user** with practical legal guidance — in simple, real-world terms.
+
+Instructions:
+
+- Always respond in a short, helpful way.
+- If the answer has steps or points, use **maximum 3–5 bullet points**.
+- Avoid legal jargon. Use simple, common Indian language.
+- DO NOT use markdown formatting (no **bold**, *italic*, or symbols).
+- Keep it direct and friendly — like you're speaking to a friend in trouble.
+- Use chat history to better understand context or what the user is trying to ask.
+- If the user might be in danger (e.g. police arrest), explain both **legal rights** and **how to stay safe calmly**.
+- Mention laws only if *really needed*. Prefer real actions over legal text.
+- Limit to **one short paragraph** if bullets don’t apply.
+- End with: “This is general legal guidance. For personal advice, consult a lawyer.”
+
+Now respond to the user's query:
+
+${context}
+`.trim();
+
+
   const body = {
-    contents: [{
-      parts: [{
-        text: `You are an expert legal assistant for Indian law. Provide accurate, helpful legal guidance. Always clarify that you're providing general information, not specific legal advice.
-
-User question: ${context}
-
-Respond in a clear, helpful manner. If the question involves complex legal issues, recommend consulting a qualified lawyer.`
-      }]
-    }],
-    generationConfig: { temperature: 0.7 }
+    contents: [
+      {
+        parts: [{ text: prompt }]
+      }
+    ],
+    generationConfig: {
+      temperature: 0.7
+    }
   };
 
   const response = await axios.post(url, body, {
     headers: { 'Content-Type': 'application/json' },
   });
 
-  return response.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-    'I apologize, but I could not process your question. Please try again.';
+  return response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+    || 'Sorry, I could not process your query. Please try again.';
 };
+
 
 // --- Translate all analysis fields ---
 const translateAnalysisFields = async (analysis, lang) => {
