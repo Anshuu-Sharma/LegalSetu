@@ -41,7 +41,7 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     if (language === 'en') return text;
     
     try {
-      const response = await fetch('http://localhost:5000/api/translate', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/translate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, targetLang: language }),
@@ -60,7 +60,7 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // Chat header management
   const fetchHeaders = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/chat-header/${language}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat-header/${language}`);
       if (!response.ok) throw new Error('Header fetch failed');
       
       const data = await response.json();
@@ -78,7 +78,7 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const updateHeaders = useCallback(async (title: string, subtitle: string) => {
     try {
-      await fetch('http://localhost:5000/api/chat-header', {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/chat-header`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lang: language, title, subtitle }),

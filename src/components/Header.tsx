@@ -185,13 +185,14 @@ const Header: React.FC<HeaderProps> = ({
               </button>
               {profileOpen && (
                 <div className="absolute right-0 mt-2 w-40 bg-white shadow-lg rounded-xl z-10">
-                  <div className="px-4 py-3 text-gray-700">{getUserLabel()}</div>
+                  <div className="text-center px-4 py-3 text-gray-700">{getUserLabel()}</div>
+                  <hr className='text-gray-500' />
                   <button
                     onClick={() => {
                       setProfileOpen(false);
                       onLogout && onLogout();
                     }}
-                    className="w-full px-4 py-3 text-center text-red-500 bg-white hover:bg-red-500 hover:text-white rounded-b-xl"
+                    className="w-full px-4 py-3 text-center text-red-500 bg-white hover:bg-red-500 hover:text-white rounded-b-xl duration-200"
                   >
                     Logout
                   </button>
@@ -203,6 +204,7 @@ const Header: React.FC<HeaderProps> = ({
               <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
+                            onClick={onGetStarted}
                             className="ml-2 bg-gradient-to-r from-blue-600 to-purple-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
                           >
                             <LocalizedText text="Get Started" />

@@ -86,7 +86,7 @@ const ChatInterface = () => {
         .slice(-5);
 
       // Pass the current language to the backend
-      const response = await fetch('http://localhost:5000/api/assist', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/assist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
