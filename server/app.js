@@ -94,7 +94,7 @@ app.use((error, req, res, next) => {
 });
 
 // Initialize services and start server
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 5000;
 
 Promise.all([
   initializeDatabase(),
