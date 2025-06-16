@@ -32,6 +32,9 @@ export default {
           '0%, 100%': { transform: 'scale(1)' },
           '50%': { transform: 'scale(1.05)' },
         }
+      },
+      screens:{
+        navcut: '920px',
       }
     },
   },

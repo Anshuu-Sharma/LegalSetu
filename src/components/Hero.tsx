@@ -1,31 +1,63 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { MessageSquare, FileText, Mic, Globe, Scale, Sparkles, ArrowRight, Play } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, useAnimation } from 'framer-motion';
 import LocalizedText from './LocalizedText';
 import { useTranslation } from '../contexts/TranslationContext';
 
 interface HeroProps {
   setActiveSection: (section: string) => void;
-  onGetStarted:  () => void;
+  onGetStarted: () => void;
 }
+
+const dropVariants = {
+  initial: { opacity: 0, y: -120, scale: 0.9 },
+  animate: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 120, damping: 18 } },
+};
+
+const floatTransition = {
+  y: {
+    duration: 4,
+    repeat: Infinity,
+    ease: "easeInOut"
+  }
+};
 
 const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
   useTranslation(); // Ensures rerender on language change
 
+  const heroRef = useRef<HTMLDivElement>(null);
+  const controls = useAnimation();
+  const [dropped, setDropped] = useState(false);
+
+  // Start drop-in, then enable floating
+  React.useEffect(() => {
+    controls.start("animate").then(() => setDropped(true));
+  }, [controls]);
+
+  // When drag ends, spring back to center (x:0, y:0)
+  const handleDragEnd = () => {
+    controls.start({
+      x: 0,
+      y: 0,
+      transition: { type: 'spring', stiffness: 80, damping: 26 }
+    });
+  };
+
   return (
-    <section className="relative min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 overflow-hidden pt-20">
+    <section
+      ref={heroRef}
+      className="relative min-h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 overflow-hidden pt-20"
+    >
       {/* Background Elements */}
-      <div className="absolute inset-0">
-        {/* Gradient Orbs */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-400/20 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl"></div>
+      <div className="fixed inset-0 w-screen h-screen pointer-events-none z-0">
+        <div className="absolute top-20 left-10 w-1/3 md:w-1/4 h-1/3 bg-blue-400/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 right-10 w-1/2 md:w-1/3 h-1/2 md:h-1/3 bg-purple-400/20 rounded-full blur-3xl"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-400/10 rounded-full blur-3xl"></div>
-        {/* Grid Pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px] w-full h-full"></div>
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+      <div className="relative w-full px-4 sm:px-6 lg:px-8 py-20">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           {/* Left Content */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -84,10 +116,10 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               {[
-                { number: '50K+', label: 'Cases Resolved' },
-                { number: '15+', label: 'Languages' },
+                { number: '100%', label: 'Confidential' },
+                { number: '10+', label: 'Languages' },
                 { number: '24/7', label: 'Availability' },
-                { number: '98%', label: 'Accuracy' },
+                { number: '< 2 min', label: 'Response Time' },
               ].map((stat, index) => (
                 <motion.div
                   key={index}
@@ -107,14 +139,28 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
             </div>
           </motion.div>
 
-          {/* Right Content - AI Assistant Card */}
+          {/* Right Content - Draggable, Drop-in, Floating AI Assistant Card */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="relative"
+            drag
+            dragConstraints={heroRef}
+            dragElastic={0.65}
+            onDragEnd={handleDragEnd}
+            variants={dropVariants}
+            initial="initial"
+            animate={controls}
+            whileHover={{ scale: 1.025 }}
+            // Floating animation starts only after drop-in
+            {...(dropped && {
+              animate: {
+                x: 0,
+                y: [0, -10, 0, 10, 0]
+              },
+              transition: floatTransition
+            })}
+            className="relative cursor-grab active:cursor-grabbing mt-10 lg:mt-0"
+            style={{ touchAction: 'none' }}
           >
-            <div className="relative bg-white/40 backdrop-blur-2xl rounded-3xl p-8 border border-white/50 shadow-2xl">
+            <div className="relative bg-white/40 backdrop-blur-2xl rounded-3xl p-8 border border-white/50 shadow-2xl select-none ">
               {/* Floating Elements */}
               <div className="absolute -top-4 -right-4 w-8 h-8 bg-green-400 rounded-full animate-pulse"></div>
               <div className="absolute -bottom-4 -left-4 w-6 h-6 bg-blue-400 rounded-full animate-bounce"></div>
@@ -147,7 +193,6 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
                   <LocalizedText text="Your Personal Legal Assistant" />
                 </p>
               </div>
-
               {/* Feature Grid */}
               <div className="grid grid-cols-2 gap-4">
                 {[

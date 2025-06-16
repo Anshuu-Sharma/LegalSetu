@@ -2,10 +2,14 @@ import React from 'react';
 import { Scale, Mail, Phone, MapPin, Facebook, Twitter, Linkedin, Instagram } from 'lucide-react';
 import LocalizedText from './LocalizedText';
 
-const Footer: React.FC = () => {
+interface FooterProps {
+  setActiveSection: (section: string) => void;
+}
+
+const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
   return (
     <footer className="bg-gray-900 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className=" w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="md:col-span-1">
@@ -42,11 +46,38 @@ const Footer: React.FC = () => {
               <LocalizedText text="Services" />
             </h4>
             <ul className="space-y-2 text-sm text-gray-400">
-              <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Legal Advice" /></a></li>
-              <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Document Analysis" /></a></li>
-              <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Form Filling" /></a></li>
-              <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Case Law Search" /></a></li>
-              <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Translation Service" /></a></li>
+              <li>
+                <button
+                  className="hover:underline  bg-transparent border-none p-0"
+                  onClick={() => setActiveSection('chat')}
+                >
+                  <LocalizedText text="Legal Advice" />
+                </button>
+              </li>
+              <li>
+                <button
+                  className="hover:underline  bg-transparent border-none p-0"
+                  onClick={() => setActiveSection('documents')}
+                >
+                  <LocalizedText text="Document Analysis" />
+                </button>
+              </li>
+              <li>
+                <button
+                  className="hover:underline  bg-transparent border-none p-0"
+                  onClick={() => setActiveSection('forms')}
+                >
+                  <LocalizedText text="Form Filling" />
+                </button>
+              </li>
+              <li>
+                <button
+                  className="hover:underline  bg-transparent border-none p-0"
+                  onClick={() => setActiveSection('about_us')}
+                >
+                  <LocalizedText text="About Us" />
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -88,13 +119,13 @@ const Footer: React.FC = () => {
               <h5 className="font-medium mb-2">
                 <LocalizedText text="Subscribe to our Newsletter" />
               </h5>
-              <div className="flex">
+              <div className="flex w-full">
                 <input
                   type="email"
                   placeholder="Your email"
-                  className="flex-1 px-3 py-2 bg-gray-800 text-white rounded-l-lg border border-gray-700 focus:outline-none focus:border-primary-500"
+                  className="flex-1 px-3 py-2 bg-gray-800 text-white rounded-l-lg border border-gray-700 focus:outline-none focus:border-primary-500 min-w-0"
                 />
-                <button className="bg-primary-600 px-4 py-2 rounded-r-lg hover:bg-primary-700 transition-colors">
+                <button className="bg-primary-600 px-4 py-2 rounded-r-lg hover:bg-primary-700 transition-colors whitespace-nowrap">
                   <LocalizedText text="Subscribe" />
                 </button>
               </div>

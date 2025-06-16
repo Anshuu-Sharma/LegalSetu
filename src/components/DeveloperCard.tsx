@@ -41,7 +41,8 @@ const DeveloperCard = ({ name, img, quote, github, linkedin, instagram }: Props)
         className={`developer-card ${showQuote ? "active" : ""}`}
         onClick={() => setShowQuote(!showQuote)}
         style={{ position: "relative" }}
-      >
+      > 
+      
         <div className="developer-image-container">
           <img src={img} alt={name} className="developer-image" />
         </div>

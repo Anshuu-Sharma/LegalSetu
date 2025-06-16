@@ -36,15 +36,15 @@ const Features: React.FC<FeaturesProps> = ({ onGetStarted }) => {
     },
     {
       icon: Search,
-      title: 'Case Law Search',
-      description: 'Access extensive database of Indian case laws and legal precedents.',
+      title: 'Ask Your Document',
+      description: 'Get instant answers from your document—no manual searching required.',
       color: 'from-purple-500 to-purple-600',
       bgColor: 'bg-purple-50'
     },
     {
       icon: Languages,
       title: 'Multi-language Support',
-      description: 'Get legal assistance in 15+ Indian languages with voice and text support.',
+      description: 'Get legal assistance in 10+ Indian languages with voice and text support.',
       color: 'from-orange-500 to-orange-600',
       bgColor: 'bg-orange-50'
     },
@@ -160,9 +160,10 @@ const Features: React.FC<FeaturesProps> = ({ onGetStarted }) => {
               <motion.button 
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
+                onClick={onGetStarted}
                 className="group bg-white text-blue-600 px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center"
               >
-                <LocalizedText text="Start Free Trial" />
+                <LocalizedText text="Start Analysing Now" />
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </motion.button>
               <motion.button 

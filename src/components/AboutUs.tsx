@@ -1,14 +1,15 @@
 // components/AboutUs.tsx
-/// <reference types="vite/client" />
-
-
 import React, { useEffect, useState } from "react";
-import DeveloperCard from "./DeveloperCard.tsx";
+import DeveloperCard from "./DeveloperCard";
 import "./styles/AboutUs.css";
 import { useTranslation } from "../contexts/TranslationContext";
 import srishtiImg from '../images/srishti.png'
 import anshuImg from '../images/anshu.png'
 import shubhamImg from '../images/shubham.png'
+import TrueFocus from './styles/TrueFocus'; 
+import DecryptedText from './styles/DecryptedText.tsx';
+import DotGrid from './styles/dots.tsx';
+
 
 const developers = [
   {
@@ -77,14 +78,59 @@ const AboutUs = () => {
       setTranslated({ tagline, description, quotes });
     };
     translateAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [language, t]);
 
   return (
-    <section className={`meet-developer ${visible ? "show" : ""}`}>
-      <h2 className="tagline">{translated.tagline}</h2>
-      <p className="description">{translated.description}</p>
 
+    
+    <section className={`meet-developer ${visible ? "show" : ""}`}>
+      {/* DotGrid background */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 0,
+        pointerEvents: 'none'
+      }}>
+        <DotGrid
+          dotSize={5}
+          gap={10}
+          baseColor="#c2b8ec"
+          activeColor="#5227FF"
+          proximity={100}
+          shockRadius={250}
+          shockStrength={5}
+          resistance={750}
+          returnDuration={.5}
+        />
+      </div>
+
+
+    <div className="description_2"><TrueFocus 
+    sentence={translated.tagline}
+    manualMode={false}
+    blurAmount={10}
+    borderColor="#8871ec"
+    animationDuration={.5}
+    pauseBetweenAnimations={.5}
+    /></div>
+    <br />
+
+      <div className="description">
+        <DecryptedText
+        text={translated.description}
+        speed={100}
+        maxIterations={30}
+        characters="ABCDEF"
+        className="revealed"
+        parentClassName="all-letters"
+        encryptedClassName="encrypted"
+        animateOn="view"
+        revealDirection="start"
+      />
+      </div>
+      
       <div className="developer-cards-container">
         {developers.map((dev, index) => (
           <DeveloperCard

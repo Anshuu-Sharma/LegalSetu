@@ -8,7 +8,7 @@ import FormFilling from './components/FormFilling/FormFilling';
 import Footer from './components/Footer';
 import Login from './components/Login';
 import Signup from './components/Signup';
-import AboutUs from './components/AboutUs';
+import AboutUs from './components/AboutUs.tsx';
 import { TranslationProvider } from './contexts/TranslationContext';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -18,6 +18,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<{
     email: string | null;
     displayName: string | null;
+    photoURL: string | null;
     uid: string;
   } | null>(null);
 
@@ -33,6 +34,7 @@ const App: React.FC = () => {
         setUser({
           email: firebaseUser.email,
           displayName: firebaseUser.displayName,
+          photoURL: firebaseUser.photoURL, 
           uid: firebaseUser.uid,
         });
       } else {
@@ -41,6 +43,7 @@ const App: React.FC = () => {
     });
     return () => unsubscribe();
   }, []);
+  
 
   // Centralized auth check
   const requireAuth = (callback: () => void) => {
@@ -89,7 +92,7 @@ const App: React.FC = () => {
 
   return (
     <TranslationProvider>
-      <div className="min-h-screen flex flex-col bg-gray-50">
+      <div className="min-h-screen flex flex-col bg-gray-50 overflow-x-hidden">
         <Header
           activeSection={activeSection}
           setActiveSection={handleSectionChange}
@@ -103,7 +106,7 @@ const App: React.FC = () => {
           {activeSection === 'home' && (
             <>
               <Hero setActiveSection={handleSectionChange} onGetStarted={() => requireAuth(() => setActiveSection('chat'))} />
-              <Features onGetStarted={() => requireAuth(() => setActiveSection('chat'))} />
+              <Features onGetStarted={()=> setActiveSection('documents')} />
             </>
           )}
           {activeSection === 'chat' && <ChatInterface />}
@@ -112,7 +115,8 @@ const App: React.FC = () => {
           {activeSection === 'about_us' && <AboutUs />}
         </main>
 
-        <Footer />
+        <Footer setActiveSection={setActiveSection} />
+
 
         {/* Auth Modals */}
         {showLogin && (
