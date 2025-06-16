@@ -104,11 +104,100 @@
 
 
 // server/src/services/formFillingService.js
+
+
+// const fs = require('fs');
+// const fsp = require('fs').promises;
+// const path = require('path');
+// const fontkit = require('fontkit');
+// const { PDFDocument, rgb } = require('pdf-lib');
+
+// class FormFillingService {
+//   async fillForm(filePath, formData, formFields = [], imageHeight = null) {
+//     try {
+//       const fileBuffer = await fsp.readFile(filePath);
+//       const pdfDoc = await PDFDocument.load(fileBuffer);
+//       pdfDoc.registerFontkit(fontkit);
+
+//       // Load a Unicode Devanagari-compatible font
+//       const fontBuffer = await fsp.readFile(path.join(__dirname, '..', 'fonts', 'NotoSansDevanagari-Regular.ttf'));
+//       const font = await pdfDoc.embedFont(fontBuffer, { subset: false });
+
+//       const pages = pdfDoc.getPages();
+//       const firstPage = pages[0];
+//       const { width: pageWidth, height: pageHeight } = firstPage.getSize();
+
+//       for (const [fieldId, value] of Object.entries(formData)) {
+//         if (!value || !value.trim()) continue;
+
+//         const field = formFields.find(f => f.id === fieldId);
+//         if (!field || !field.rect) continue;
+
+//         let [x, y, x2, y2] = field.rect;
+
+//         if (imageHeight) {
+//           y = pageHeight - y;
+//           y2 = pageHeight - y2;
+//           if (y2 < y) [y, y2] = [y2, y];
+//         }
+
+//         const fieldWidth = Math.abs(x2 - x);
+//         const fieldHeight = Math.abs(y2 - y);
+//         let fontSize = Math.min(fieldHeight * 0.7, 18);
+
+//         let text = String(value).trim();
+//         let textWidth = font.widthOfTextAtSize(text, fontSize);
+//         while (textWidth > fieldWidth - 4 && fontSize > 6) {
+//           fontSize -= 0.5;
+//           textWidth = font.widthOfTextAtSize(text, fontSize);
+//         }
+
+//         const textX = x + (fieldWidth - textWidth) / 2;
+//         const textHeight = font.heightAtSize(fontSize);
+//         const textY = y + (fieldHeight / 2) - (textHeight / 2) + (fontSize * 2.5);
+
+//         // Optional: highlight rectangle
+//         firstPage.drawRectangle({
+//           x: textX,
+//           y: textY,
+//           width: textWidth,
+//           height: textHeight,
+//           color: rgb(1, 1, 0.4), // Yellow
+//           opacity: 1
+//         });
+
+//         firstPage.drawText(text, {
+//           x: textX,
+//           y: textY,
+//           size: fontSize,
+//           font,
+//           color: rgb(0, 0, 0)
+//         });
+//       }
+
+//       const pdfBytes = await pdfDoc.save();
+//       const outputPath = path.join('uploads', 'filled', `filled_${Date.now()}.pdf`);
+//       await fsp.mkdir(path.dirname(outputPath), { recursive: true });
+//       await fsp.writeFile(outputPath, pdfBytes);
+
+//       return {
+//         filePath: outputPath,
+//         downloadUrl: `/api/forms/download/${path.basename(outputPath)}`
+//       };
+//     } catch (error) {
+//       console.error('Form filling error:', error);
+//       throw new Error('Failed to fill form: ' + error.message);
+//     }
+//   }
+// }
+
+// module.exports = new FormFillingService();
+
 const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
 const fontkit = require('fontkit');
-const { PDFDocument, rgb } = require('pdf-lib');
+const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 
 class FormFillingService {
   async fillForm(filePath, formData, formFields = [], imageHeight = null) {
@@ -117,22 +206,33 @@ class FormFillingService {
       const pdfDoc = await PDFDocument.load(fileBuffer);
       pdfDoc.registerFontkit(fontkit);
 
-      // Load a Unicode Devanagari-compatible font
-      const fontBuffer = await fsp.readFile(path.join(__dirname, '..', 'fonts', 'NotoSansDevanagari-Regular.ttf'));
-      const font = await pdfDoc.embedFont(fontBuffer, { subset: false });
+      // Load fonts
+      const defaultFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const devFontPath = path.join(__dirname, '..', 'fonts', 'NotoSansDevanagari-Regular.ttf');
+
+      let unicodeFont = null;
+      try {
+        const fontBuffer = await fsp.readFile(devFontPath);
+        unicodeFont = await pdfDoc.embedFont(fontBuffer, { subset: false });
+      } catch (err) {
+        console.warn('⚠️ Hindi font not found. Only default font will be used.');
+      }
 
       const pages = pdfDoc.getPages();
       const firstPage = pages[0];
-      const { width: pageWidth, height: pageHeight } = firstPage.getSize();
+      const { height: pageHeight } = firstPage.getSize();
 
-      for (const [fieldId, value] of Object.entries(formData)) {
-        if (!value || !value.trim()) continue;
+      for (const [fieldId, valueRaw] of Object.entries(formData)) {
+        const value = String(valueRaw || '').trim();
+        if (!value) continue;
 
         const field = formFields.find(f => f.id === fieldId);
-        if (!field || !field.rect) continue;
+        if (!field || !Array.isArray(field.rect) || field.rect.length !== 4) {
+          console.warn(`⚠️ Skipping "${fieldId}": invalid or missing rectangle info.`);
+          continue;
+        }
 
         let [x, y, x2, y2] = field.rect;
-
         if (imageHeight) {
           y = pageHeight - y;
           y2 = pageHeight - y2;
@@ -141,30 +241,47 @@ class FormFillingService {
 
         const fieldWidth = Math.abs(x2 - x);
         const fieldHeight = Math.abs(y2 - y);
-        let fontSize = Math.min(fieldHeight * 0.7, 18);
 
-        let text = String(value).trim();
-        let textWidth = font.widthOfTextAtSize(text, fontSize);
+        // Determine which font to use
+        const isHindi = /[\u0900-\u097F]/.test(value);
+        let font = defaultFont;
+
+        if (isHindi) {
+          if (!unicodeFont) {
+            console.warn(`⚠️ Hindi text detected in "${fieldId}" but Devanagari font not loaded.`);
+          } else {
+            font = unicodeFont;
+          }
+        }
+
+        if (!font) {
+          console.error(`❌ No font available for field "${fieldId}". Skipping.`);
+          continue;
+        }
+
+        let fontSize = Math.min(fieldHeight * 0.7, 18);
+        let textWidth = font.widthOfTextAtSize(value, fontSize);
         while (textWidth > fieldWidth - 4 && fontSize > 6) {
           fontSize -= 0.5;
-          textWidth = font.widthOfTextAtSize(text, fontSize);
+          textWidth = font.widthOfTextAtSize(value, fontSize);
         }
 
         const textX = x + (fieldWidth - textWidth) / 2;
         const textHeight = font.heightAtSize(fontSize);
         const textY = y + (fieldHeight / 2) - (textHeight / 2) + (fontSize * 2.5);
 
-        // Optional: highlight rectangle
+        // Highlight box (optional)
         firstPage.drawRectangle({
           x: textX,
           y: textY,
           width: textWidth,
           height: textHeight,
-          color: rgb(1, 1, 0.4), // Yellow
+          color: rgb(1, 1, 0.4), // yellow
           opacity: 1
         });
 
-        firstPage.drawText(text, {
+        // Draw text
+        firstPage.drawText(value, {
           x: textX,
           y: textY,
           size: fontSize,

@@ -1,4 +1,6 @@
 // Safe fallback without breaking TS
+/// <reference types="vite/client" />
+
 declare global {
   interface Window {
     webkitSpeechRecognition: any;
@@ -19,6 +21,7 @@ type SpeechRecognitionEvent = Event & {
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Mic } from 'lucide-react';
 import { useTranslation } from '../../contexts/TranslationContext.tsx';
+import { motion } from "framer-motion";
 
 interface Analysis {
   summary: string;
@@ -61,8 +64,8 @@ const AnalysisModal: React.FC<Props> = ({ analysis, onClose }) => {
   const [listening, setListening] = useState(false);
 
   const { t, language } = useTranslation();
-
   const [typingText, setTypingText] = useState('');
+
   const [ui, setUI] = useState({
     chatWithDoc: 'Chat with Doc',
     viewAnalysis: 'View Analysis',
@@ -117,6 +120,62 @@ const AnalysisModal: React.FC<Props> = ({ analysis, onClose }) => {
     return () => { mounted = false; };
   }, [language, t]);
 
+ // Generate unique document hash once per analysis
+const docHash = analysis?.fullText ? btoa(analysis.fullText.slice(0, 200)) : null;
+
+// Load saved chat messages on document load
+const loadChatMessages = () => {
+  if (!docHash) return;
+
+  const key = `chatMessages:${docHash}`;
+  const saved = sessionStorage.getItem(key);
+
+  try {
+    const parsed = saved ? JSON.parse(saved) : [];
+    if (Array.isArray(parsed)) {
+      console.log('✅ Loaded chat messages from sessionStorage:', key);
+      setMessages(parsed);
+    } else {
+      console.warn('⚠️ Stored chat is not an array, resetting...');
+      setMessages([]);
+    }
+  } catch (err) {
+    console.error('❌ Failed to parse chat messages:', err);
+    setMessages([]);
+  }
+
+  setInput('');
+  setTypingText('');
+};
+
+useEffect(() => {
+  loadChatMessages();
+}, [analysis]); // this ensures it runs when a new document is loaded
+
+
+// Save chat messages whenever they change
+const hasLoadedRef = useRef(false);
+
+useEffect(() => {
+  if (!docHash) return;
+
+  if (!hasLoadedRef.current) {
+    hasLoadedRef.current = true;
+    return; // skip first run, only save after actual user interaction
+  }
+
+  const key = `chatMessages:${docHash}`;
+  try {
+    const data = JSON.stringify(messages);
+    sessionStorage.setItem(key, data);
+    console.log('✅ Chat saved:', key);
+  } catch (err) {
+    console.error('❌ Failed to save chat messages:', err);
+  }
+}, [messages, docHash]);
+
+
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, typingText]);
@@ -169,7 +228,6 @@ const AnalysisModal: React.FC<Props> = ({ analysis, onClose }) => {
       const result = await res.json();
       const reply = result.reply || '❌ Sorry, I could not process your question.';
 
-      // Simulated typing effect
       const words = reply.split(' ');
       let index = 0;
       const interval = setInterval(() => {
@@ -195,56 +253,78 @@ const AnalysisModal: React.FC<Props> = ({ analysis, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-6xl h-[80vh] flex divide-x relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+      <div className="bg-white rounded-2xl overflow-hidden w-full max-w-6xl h-[90vh] flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x relative">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+        >
           <X size={24} />
         </button>
 
-        <div className="flex-1 p-6 overflow-y-auto">
-          <div className="flex gap-3 mb-4">
-            <button onClick={() => setChatMode((prev) => !prev)} className="px-3 py-1 text-sm border border-blue-200 text-blue-600 rounded-md hover:bg-blue-50">
+        <div className="flex-1 flex flex-col p-4 overflow-hidden">
+          <div className="flex gap-3 mb-4 flex-wrap">
+            <button
+              onClick={() => setChatMode((prev) => !prev)}
+              className="px-3 py-1 text-sm border border-blue-200 text-blue-600 rounded-md hover:bg-blue-50"
+            >
               {chatMode ? ui.viewAnalysis : ui.chatWithDoc}
             </button>
-            <button onClick={() => setShowDocument((prev) => !prev)} className="px-3 py-1 text-sm border border-purple-200 text-purple-600 rounded-md hover:bg-purple-50">
+            <button
+              onClick={() => setShowDocument((prev) => !prev)}
+              className="px-3 py-1 text-sm border border-purple-200 text-purple-600 rounded-md hover:bg-purple-50"
+            >
               {showDocument ? ui.hideDoc : ui.viewDoc}
             </button>
           </div>
 
-          <h2 className="text-2xl font-bold mb-6">
+          <h2 className="text-2xl font-bold mb-4">
             {chatMode ? `💬 ${ui.chatWithDoc}` : `📄 ${ui.legalDocAnalysis}`}
           </h2>
 
           {chatMode ? (
-            <div className="flex flex-col h-[60vh]">
+            <div className="flex flex-col flex-1 min-h-0">
               <div className="flex-1 overflow-y-auto mb-4 pr-2">
-                {messages.map((msg, i) => (
-                  <div key={i} className={`mb-3 flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`group relative max-w-[75%] px-4 py-2 rounded-xl ${
-                      msg.role === 'user' ? 'bg-blue-100 text-blue-900' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {msg.text}
-                      <div className="text-xs text-gray-400 mt-1 text-right">{msg.timestamp}</div>
-                      {msg.role === 'bot' && (
-                        <button
-                          onClick={() => speakText(msg.text)}
-                          className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Listen"
-                        >
-                          🔊
-                        </button>
-                      )}
+                {messages.map((msg, i) => {
+                  const isUser = msg.role === 'user';
+                  const avatar = isUser ? '🧑‍💼' : '👩‍⚖️';
+                  return (
+                    <div
+                      key={i}
+                      className={`flex items-end mb-4 ${isUser ? 'justify-end' : 'justify-start'} gap-2`}
+                    >
+                      {!isUser && <div className="text-2xl w-8 h-8 flex items-center justify-center">{avatar}</div>}
+                      <div className={`group relative max-w-[75%] px-4 py-3 rounded-2xl text-sm shadow-md ${
+                        isUser ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-gray-100 text-gray-900 rounded-bl-sm'
+                      }`}>
+                        <div className="whitespace-pre-wrap">{msg.text}</div>
+                        <div className="flex justify-between items-center mt-2 text-[11px] text-gray-400">
+                          <span>{msg.timestamp}</span>
+                          {msg.role === 'bot' && (
+                            <button
+                              onClick={() => speakText(msg.text)}
+                              title="Listen"
+                              className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                            >
+                              🔊
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {isUser && <div className="text-2xl w-8 h-8 flex items-center justify-center">{avatar}</div>}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {typingText && (
-                  <div className="mb-3 flex justify-start">
-                    <div className="max-w-[75%] px-4 py-2 rounded-xl bg-gray-100 text-gray-800">
+                  <div className="flex items-end mb-4 gap-2">
+                    <div className="text-2xl w-8 h-8 flex items-center justify-center">👩‍⚖️</div>
+                    <div className="max-w-[75%] px-4 py-3 rounded-2xl bg-gray-100 text-gray-900 shadow-md text-sm animate-pulse">
                       {typingText}
                     </div>
                   </div>
                 )}
                 <div ref={chatEndRef} />
               </div>
+
               <div className="flex items-center gap-2">
                 <input
                   value={input}
@@ -305,7 +385,7 @@ const AnalysisModal: React.FC<Props> = ({ analysis, onClose }) => {
         </div>
 
         {showDocument && (
-          <div className="flex-1 p-6 overflow-y-auto">
+          <div className="flex-1 p-6 overflow-y-auto bg-gray-50 rounded-r-2xl">
             <h3 className="text-lg font-semibold mb-4">📖 {ui.fullDocument}</h3>
             <div className="text-gray-700 whitespace-pre-wrap">
               {analysis.fullText}

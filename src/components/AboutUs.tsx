@@ -1,4 +1,6 @@
 // components/AboutUs.tsx
+/// <reference types="vite/client" />
+
 
 import React, { useEffect, useState } from "react";
 import DeveloperCard from "./DeveloperCard.tsx";

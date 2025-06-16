@@ -5,6 +5,7 @@ import LanguageSelector from './Document/LanguageSelector';
 import FileUploader from './Document/FileUploader.tsx';
 import DocumentList from './Document/DocumentList.tsx';
 import AnalysisModal from './Document/AnalysisModal.tsx';
+import ChatHeader from './ChatHeader.tsx';
 
 interface AnalysisResult {
   summary: string;
@@ -159,35 +160,87 @@ const DocumentUpload: React.FC = () => {
     }
   }, [analysisView, language]);
 
-  return (
-    <div className="max-w-3xl mx-auto py-8 px-4">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-6"
-      >
-        <h2 className="text-2xl font-bold">{localizedText.headerTitle}</h2>
-        <p className="text-gray-600">{localizedText.headerSubtitle}</p>
-      </motion.div>
 
-      {/* File Uploader */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="mb-6"
-      >
-        <FileUploader
-          onFiles={handleFiles}
-          dragActive={dragActive}
-          setDragActive={setDragActive}
-          uploadLabel={localizedText.uploadLabel}
-          chooseFileLabel={localizedText.chooseFileLabel}
-          fileTypesLabel={localizedText.fileTypesLabel}
-        />
-      </motion.div>
+  // Restore documents and analysisView on first load
+useEffect(() => {
+  const savedDocs = sessionStorage.getItem('uploadedDocuments');
+  const savedView = sessionStorage.getItem('analysisViewId');
 
-      {/* Document List */}
+  if (savedDocs) {
+    try {
+      const parsed: UploadedDocument[] = JSON.parse(savedDocs);
+      if (Array.isArray(parsed)) {
+        setDocuments(parsed);
+        console.log('✅ Restored documents from session:', parsed);
+      }
+    } catch (error) {
+      console.error('❌ Failed to parse saved documents:', error);
+    }
+  }
+
+  if (savedView) {
+    setAnalysisView(savedView);
+  }
+}, []);
+
+// Save documents to sessionStorage when they change
+useEffect(() => {
+  const timeout = setTimeout(() => {
+    sessionStorage.setItem('uploadedDocuments', JSON.stringify(documents));
+    console.log('✅ Saved documents to session:', documents);
+  }, 400);
+
+  return () => clearTimeout(timeout);
+}, [documents]);
+
+// Save selected analysisView when it changes
+useEffect(() => {
+  if (analysisView) {
+    sessionStorage.setItem('analysisViewId', analysisView);
+    console.log('✅ Saved analysisView to session:', analysisView);
+  } else {
+    sessionStorage.removeItem('analysisViewId');
+  }
+}, [analysisView]);
+
+
+  
+
+return (
+  <motion.div
+    initial={{ opacity: 0, y: 30 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.6, ease: "easeOut" }}
+    className="max-w-3xl mx-auto py-8 px-4"
+  >
+    <ChatHeader
+      title={localizedText.headerTitle}
+      subtitle={localizedText.headerSubtitle}
+    />
+
+    {/* File Uploader */}
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3, duration: 0.5 }}
+      className="mb-6"
+    >
+      <FileUploader
+        onFiles={handleFiles}
+        dragActive={dragActive}
+        setDragActive={setDragActive}
+        uploadLabel={localizedText.uploadLabel}
+        chooseFileLabel={localizedText.chooseFileLabel}
+        fileTypesLabel={localizedText.fileTypesLabel}
+      />
+    </motion.div>
+
+    {/* Document List */}
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.5, duration: 0.5 }}
+    >
       <DocumentList
         documents={documents}
         onDelete={(id) => setDocuments(prev => prev.filter(d => d.id !== id))}
@@ -195,16 +248,17 @@ const DocumentUpload: React.FC = () => {
         uploadedDocsLabel={localizedText.uploadedDocsLabel}
         noDocsLabel={localizedText.noDocsLabel}
       />
+    </motion.div>
 
-      {/* Analysis Modal */}
-      {analysisView && (
-        <AnalysisModal
-          analysis={documents.find(d => d.analysisId === analysisView)?.analysis}
-          onClose={() => setAnalysisView(null)}
-        />
-      )}
-    </div>
-  );
+    {/* Analysis Modal */}
+    {analysisView && (
+      <AnalysisModal
+        analysis={documents.find(d => d.analysisId === analysisView)?.analysis}
+        onClose={() => setAnalysisView(null)}
+      />
+    )}
+  </motion.div>
+);
 };
 
 export default DocumentUpload;

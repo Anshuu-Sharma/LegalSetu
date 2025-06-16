@@ -3,12 +3,7 @@ import { Languages, FileText, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from '../contexts/TranslationContext.tsx';
 
-interface ChatHeaderProps {
-  title: string;
-  subtitle: string;
-}
-
-const ChatHeader: React.FC<ChatHeaderProps> = ({ title, subtitle }) => {
+const DocChatHeader: React.FC = () => {
   const { language, setLanguage } = useTranslation();
 
   const languages = [
@@ -48,11 +43,11 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ title, subtitle }) => {
           </motion.div>
           <div>
             <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              {title}
+              Document Analysis
             </h2>
             <p className="text-sm text-green-600 flex items-center font-medium">
               <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
-              {subtitle}
+              Upload documents and get AI-powered insights.
             </p>
           </div>
         </div>
@@ -76,4 +71,4 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ title, subtitle }) => {
   );
 };
 
-export default ChatHeader;
+export default DocChatHeader;
