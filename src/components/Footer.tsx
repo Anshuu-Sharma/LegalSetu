@@ -25,9 +25,8 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
                           </div>
                           <div>
                             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-700 bg-clip-text text-transparent">
-                              LegalBot AI
+                              LegalSetu
                             </h1>
-                            <p className="text-xs text-gray-500 font-medium">Powered by AI</p>
                           </div>
                         </motion.div>
             </div>
@@ -154,7 +153,7 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
         {/* Bottom Bar */}
         <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
           <div className="text-sm text-gray-400">
-            &copy; 2025 LegalBot AI. <LocalizedText text="All rights reserved." />
+            &copy; 2025 LegalSetu. <LocalizedText text="All rights reserved." />
           </div>
           <div className="flex space-x-6 mt-4 md:mt-0 text-sm text-gray-400">
             <a href="#" className="hover:text-white transition-colors"><LocalizedText text="Privacy Policy" /></a>

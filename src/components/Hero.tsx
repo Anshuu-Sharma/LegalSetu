@@ -77,13 +77,13 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
               </span>
             </motion.div>
 
-            <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-8">
+            <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-9">
               <span className="bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent">
                 <LocalizedText text="Your AI-Powered" />
               </span>
               <br />
               <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                <LocalizedText text="Legal Assistant" />
+                <LocalizedText text="Legal Buddy" />
               </span>
             </h1>
             
@@ -98,7 +98,7 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
                 onClick={() => setActiveSection('chat')}
                 className="group bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center"
               >
-                <LocalizedText text="Start AI Chat" />
+                <LocalizedText text="Ask now!" />
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </motion.button>
               
@@ -187,7 +187,7 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
                   </div>
                 </motion.div>
                 <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                  <LocalizedText text="LegalBot AI" />
+                  <LocalizedText text="LegalSetu" />
                 </h3>
                 <p className="text-blue-600 font-large">
                   <LocalizedText text="Your Personal Legal Assistant" />

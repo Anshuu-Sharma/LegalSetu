@@ -261,26 +261,6 @@ return (
       transition={{ duration: 0.6, ease: "easeOut" }}
       className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8"
     >
-      {/* Top Intro Section */}
-      {/* <div className="text-center mb-14">
-        <motion.h1
-          className="text-5xl sm:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-transparent bg-clip-text tracking-tight drop-shadow-md"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          <LocalizedText text="AI-Powered Form Assistant" />
-        </motion.h1>
-
-        <motion.p
-          className="mt-6 text-lg sm:text-xl md:text-1xl text-gray-700 max-w-3xl mx-auto leading-relaxed"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <LocalizedText text="Upload your form. Let our AI detect fields, auto-fill in your regional language, and deliver a ready-to-use document." />
-        </motion.p>
-      </div> */}
       {/* Header Container */}
       <div className="max-w-5xl mx-auto p-6 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 mb-8">
         <div className="flex items-center justify-between mb-2">
@@ -297,11 +277,11 @@ return (
             </motion.div>
             <div>
               <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                <LocalizedText text='AI-Powered Form Assistant' />
+                <LocalizedText text='Form Assistant' />
               </h2>
               <p className="text-sm text-green-600 flex items-center font-medium">
                 <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
-                <LocalizedText text='Upload your form. Let our AI detect fields, auto-fill in your regional language, and deliver a ready-to-use document.'/>
+                <LocalizedText text='Upload your form. Easily fill in your regional language, and download it.'/>
               </p>
             </div>
           </div>

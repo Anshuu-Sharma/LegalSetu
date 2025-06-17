@@ -154,7 +154,7 @@ const Features: React.FC<FeaturesProps> = ({ onGetStarted }) => {
               <LocalizedText text="Ready to Get Started?" />
             </h3>
             <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto leading-relaxed">
-              <LocalizedText text="Join thousands of users who trust LegalBot AI for their legal needs. Get instant answers to your legal questions today." />
+              <LocalizedText text="Join thousands of users who trust LegalSetu for their legal needs. Get instant answers to your legal questions today." />
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <motion.button 

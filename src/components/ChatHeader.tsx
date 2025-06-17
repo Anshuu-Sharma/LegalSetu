@@ -45,11 +45,11 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ title, subtitle }) => {
             </motion.div>
             <div>
               <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                <LocalizedText text='Constitutional Article Search' />
+      {title}
               </h2>
               <p className="text-sm text-green-600 flex items-center font-medium">
                 <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
-                <LocalizedText text='Search and explore Indian law instantly.'/>
+                {subtitle}
               </p>
             </div>
           </div>

@@ -65,10 +65,10 @@ const Header: React.FC<HeaderProps> = ({
 
   const navigation = [
     { name: 'Home', id: 'home' },
-    { name: 'AI Chat', id: 'chat' },
-    { name: 'Documents', id: 'documents' },
-    { name: 'Case Laws', id: 'cases' }, 
-    { name: 'Forms', id: 'forms' },
+    { name: 'Legal Assistant', id: 'chat' },
+    { name: 'Document Analysis', id: 'documents' },
+    { name: 'Constitution', id: 'cases' }, 
+    { name: 'Form Assistant', id: 'forms' },
     { name: 'About Us', id: 'about_us' }
   ];
 
@@ -137,9 +137,8 @@ const Header: React.FC<HeaderProps> = ({
             </div>
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-700 bg-clip-text text-transparent">
-                LegalBot AI
+                LegalSetu
               </h1>
-              <p className="text-xs text-gray-500 font-medium">Powered by AI</p>
             </div>
           </motion.div>
 
