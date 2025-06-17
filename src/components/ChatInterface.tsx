@@ -7,6 +7,8 @@ import ChatHeader from './ChatHeader.tsx';
 import { useTranslation } from '../contexts/TranslationContext';
 const apiUrl = import.meta.env.VITE_API_URL;
 import { Sparkles } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
+import LocalizedText from './LocalizedText.tsx';
 
 
 interface Message {
@@ -212,14 +214,26 @@ useEffect(() => {
   return () => clearTimeout(timeout); // Prevent multiple rapid saves
 }, [messages]);
 
+const [clearing, setClearing] = useState(false);
+
+const handleClearChat = () => {
+  setClearing(true);
+  setTimeout(() => {
+    setMessages([]);
+    sessionStorage.removeItem("chatHistory");
+    setClearing(false);
+  }, 500); // match animation duration
+};
+
+
 
 
 
 return (
- <div className="min-h-screen bg-gradient-to-br from-[#e0f2ff] via-white to-[#f3e8ff] py-12 px-4">
-
+<div className="min-h-screen bg-gradient-to-br from-[#e0f2ff] via-white to-[#f3e8ff] py-12 px-4">
     {/* Chat Header */}
-  <motion.div
+    
+    <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
@@ -262,8 +276,27 @@ return (
           {s}
         </motion.button>
       ))}
+      
+
+
     </div>
+    
   </motion.div>
+
+
+<motion.button
+    whileTap={{ scale: 0.95, rotate: -1 }}
+    whileHover={{ scale: 1.03 }}
+    onClick={handleClearChat}
+    disabled={isThinking}
+    className="mt-6 w-full flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-red-600 border border-red-200 bg-red-50 hover:bg-red-100 transition-all duration-300 shadow-sm"
+  >
+    <Trash2 className="w-4 h-4" />
+    Clear Chat
+  </motion.button>
+
+
+
 </aside>
 
 
@@ -289,84 +322,91 @@ return (
                   🤖
                 </div>
                 <div className="relative px-4 py-3 text-sm rounded-2xl shadow bg-blue-50/90 border border-blue-100 rounded-bl-none">
-                  {localizedText.welcomeMessage}
+                  <LocalizedText text={localizedText.welcomeMessage}/>
                 </div>
               </div>
             </motion.div>
 
             {/* Messages */}
-            {messages.map((msg) =>
-              msg.sender === 'typing' ? (
-                <motion.div
-                  key="thinking"
-                  className="flex justify-start"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <div className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-xl flex items-center gap-2 text-sm shadow">
-                    <div className="flex space-x-1">
-                      <span className="w-2 h-2 bg-gray-600 rounded-full animate-bounce" />
-                      <span className="w-2 h-2 bg-gray-600 rounded-full animate-bounce delay-150" />
-                      <span className="w-2 h-2 bg-gray-600 rounded-full animate-bounce delay-300" />
-                    </div>
-                    <span className="text-gray-600">Thinking...</span>
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key={msg.id}
-                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35 }}
-                >
-                  <div className="flex items-end gap-2 max-w-[80%]">
-                    {msg.sender === 'bot' && (
-                      <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-lg shadow">
-                        🤖
-                      </div>
-                    )}
-                    <div
-                      className={`relative group px-4 py-3 text-sm rounded-2xl transition-all duration-300 shadow-md ${
-                        msg.sender === 'user'
-                          ? 'bg-gray-800 text-white rounded-br-none'
-                          : 'bg-white/80 backdrop-blur-lg border border-blue-200 text-gray-800 rounded-bl-none'
-                      }`}
-                    >
-                      {msg.text.split('\n').map((line, i) => (
-                        <p
-                          key={i}
-                          className={`mb-1 whitespace-pre-wrap ${
-                            line.trim().startsWith('-') ? 'pl-4 list-disc list-inside' : ''
-                          }`}
-                        >
-                          {line}
-                        </p>
-                      ))}
-
-                      {msg.sender === 'bot' && (
-                        <button
-                          onClick={() => speakText(msg.text)}
-                          className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-full bg-white shadow hover:bg-blue-100"
-                          title="Read aloud"
-                        >
-                          <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path d="M11 5L7 9H4v6h3l4 4V5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            <path d="M15.54 8.46a5 5 0 010 7.07m2.12-9.19a9 9 0 010 12.73" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                    {msg.sender === 'user' && (
-                      <div className="w-9 h-9 rounded-full bg-gray-300 text-gray-900 flex items-center justify-center text-lg font-semibold shadow">
-                        🙋
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )
+            <AnimatePresence mode="sync">
+  {!clearing &&
+    messages.map((msg) =>
+      msg.sender === 'typing' ? (
+        <motion.div
+          key="thinking"
+          className="flex justify-start"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <div className="px-4 py-2 bg-gray-100 border border-gray-300 rounded-xl flex items-center gap-2 text-sm shadow">
+            <div className="flex space-x-1">
+              <span className="w-2 h-2 bg-gray-600 rounded-full animate-bounce" />
+              <span className="w-2 h-2 bg-gray-600 rounded-full animate-bounce delay-150" />
+              <span className="w-2 h-2 bg-gray-600 rounded-full animate-bounce delay-300" />
+            </div>
+            <span className="text-gray-600">Thinking...</span>
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div
+          key={msg.id}
+          className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.85, y: -10 }}
+          transition={{ duration: 0.35 }}
+        >
+          <div className="flex items-end gap-2 max-w-[80%]">
+            {msg.sender === 'bot' && (
+              <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-lg shadow">
+                🤖
+              </div>
             )}
+
+            <div
+              className={`relative group px-4 py-3 text-sm rounded-2xl transition-all duration-300 shadow-md ${
+                msg.sender === 'user'
+                  ? 'bg-gray-800 text-white rounded-br-none'
+                  : 'bg-white/80 backdrop-blur-lg border border-blue-200 text-gray-800 rounded-bl-none'
+              }`}
+            >
+              {msg.text.split('\n').map((line, i) => (
+                <p
+                  key={i}
+                  className={`mb-1 whitespace-pre-wrap ${
+                    line.trim().startsWith('-') ? 'pl-4 list-disc list-inside' : ''
+                  }`}
+                >
+                  {line}
+                </p>
+              ))}
+
+              {msg.sender === 'bot' && (
+                <button
+                  onClick={() => speakText(msg.text)}
+                  className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-full bg-white shadow hover:bg-blue-100"
+                  title="Read aloud"
+                >
+                  <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M11 5L7 9H4v6h3l4 4V5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M15.54 8.46a5 5 0 010 7.07m2.12-9.19a9 9 0 010 12.73" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {msg.sender === 'user' && (
+              <div className="w-9 h-9 rounded-full bg-gray-300 text-gray-900 flex items-center justify-center text-lg font-semibold shadow">
+                🙋
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )
+    )}
+</AnimatePresence>
+
           </AnimatePresence>
         </div>
 
@@ -410,15 +450,7 @@ return (
         </div>
       </motion.div>
     </div>
-</div>
+  </div>
 );
-
-
-
-
-
-
 }
-
-
 export default ChatInterface;

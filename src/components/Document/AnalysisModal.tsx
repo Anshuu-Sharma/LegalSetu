@@ -82,6 +82,11 @@ const AnalysisModal: React.FC<Props> = ({ analysis, onClose }) => {
     errorDuringAnalysis: 'Error during analysis.',
     askPlaceholder: 'Ask something about the document...',
     send: 'Send',
+    clearChat: 'Clear Chat',
+downloadSummary: 'Download Summary',
+downloadAnalysis: 'Download Analysis',
+
+    
   });
 
   useEffect(() => {
@@ -90,7 +95,7 @@ const AnalysisModal: React.FC<Props> = ({ analysis, onClose }) => {
       const [
         chatWithDoc, viewAnalysis, viewDoc, hideDoc, legalDocAnalysis,
         summary, clauses, risks, suggestions, fullDocument,
-        analyzing, analysisComplete, errorDuringAnalysis, askPlaceholder, send
+        analyzing, analysisComplete, errorDuringAnalysis, askPlaceholder, send,clearChat, downloadSummary, downloadAnalysis
       ] = await Promise.all([
         t('Chat with Doc'),
         t('View Analysis'),
@@ -106,13 +111,16 @@ const AnalysisModal: React.FC<Props> = ({ analysis, onClose }) => {
         t('Analysis Complete'),
         t('Error during analysis.'),
         t('Ask something about the document...'),
-        t('Send')
+        t('Send'),
+        t('Clear Chat'),
+  t('Download Summary'),
+  t('Download Analysis')
       ]);
       if (mounted) {
         setUI({
           chatWithDoc, viewAnalysis, viewDoc, hideDoc, legalDocAnalysis,
           summary, clauses, risks, suggestions, fullDocument,
-          analyzing, analysisComplete, errorDuringAnalysis, askPlaceholder, send
+          analyzing, analysisComplete, errorDuringAnalysis, askPlaceholder, send,clearChat, downloadSummary, downloadAnalysis
         });
       }
     };
@@ -251,18 +259,73 @@ useEffect(() => {
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl overflow-hidden w-full max-w-6xl h-[90vh] flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-        >
-          <X size={24} />
-        </button>
+  const downloadSection = (section: 'summary' | 'analysis') => {
+  const content = section === 'summary' ? analysis.summary : `
+--- 📄 Summary ---
+${analysis.summary}
 
-        <div className="flex-1 flex flex-col p-4 overflow-hidden">
-          <div className="flex gap-3 mb-4 flex-wrap">
+--- 🔍 Clauses ---
+${analysis.clauses.join('\n\n')}
+
+--- ⚠️ Risks ---
+${analysis.risks.join('\n\n')}
+
+--- 💡 Suggestions ---
+${analysis.suggestions.join('\n\n')}
+  `.trim();
+
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${section}-download.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+const handleClearChat = () => {
+  sessionStorage.removeItem('chatMessages');
+  setMessages([]);
+  setTypingText('');
+};
+const [playingMessageIndex, setPlayingMessageIndex] = useState<number | null>(null);
+const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+const speakBotMessage = (text: string, index: number) => {
+  if (playingMessageIndex === index) {
+    window.speechSynthesis.cancel();
+    setPlayingMessageIndex(null);
+    return;
+  }
+
+  window.speechSynthesis.cancel(); // Stop any existing speech
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'en-IN';
+  utterance.onend = () => setPlayingMessageIndex(null);
+  speechSynthesisRef.current = utterance;
+  window.speechSynthesis.speak(utterance);
+  setPlayingMessageIndex(index);
+};
+const [speakerEnabled, setSpeakerEnabled] = useState(true); // Speaker toggle
+const [clearing, setClearing] = useState(false);  
+
+
+
+return (
+  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in">
+    <div className="bg-white rounded-2xl overflow-hidden w-full max-w-6xl h-[90vh] flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x relative">
+      <button
+        onClick={onClose}
+        className="absolute top-2 right-2 md:top-4 md:right-4 text-gray-500 hover:text-gray-700 z-10"
+      >
+        <X size={24} />
+      </button>
+
+      <div className="flex-1 flex flex-col p-4 overflow-hidden">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
+          <div className="flex gap-3 flex-wrap">
             <button
               onClick={() => setChatMode((prev) => !prev)}
               className="px-3 py-1 text-sm border border-blue-200 text-blue-600 rounded-md hover:bg-blue-50"
@@ -275,126 +338,160 @@ useEffect(() => {
             >
               {showDocument ? ui.hideDoc : ui.viewDoc}
             </button>
+            <button
+              onClick={handleClearChat}
+              className="px-3 py-1 text-sm bg-red-50 text-red-600 border border-red-200 rounded-md hover:bg-red-100 hover:scale-105 transition-transform"
+              title="Clear Chat"
+            >
+              🧹 {ui.clearChat || 'Clear Chat'}
+            </button>
+           
           </div>
-
-          <h2 className="text-2xl font-bold mb-4">
-            {chatMode ? `💬 ${ui.chatWithDoc}` : `📄 ${ui.legalDocAnalysis}`}
-          </h2>
-
-          {chatMode ? (
-            <div className="flex flex-col flex-1 min-h-0">
-              <div className="flex-1 overflow-y-auto mb-4 pr-2">
-                {messages.map((msg, i) => {
-                  const isUser = msg.role === 'user';
-                  const avatar = isUser ? '🧑‍💼' : '👩‍⚖️';
-                  return (
-                    <div
-                      key={i}
-                      className={`flex items-end mb-4 ${isUser ? 'justify-end' : 'justify-start'} gap-2`}
-                    >
-                      {!isUser && <div className="text-2xl w-8 h-8 flex items-center justify-center">{avatar}</div>}
-                      <div className={`group relative max-w-[75%] px-4 py-3 rounded-2xl text-sm shadow-md ${
-                        isUser ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-gray-100 text-gray-900 rounded-bl-sm'
-                      }`}>
-                        <div className="whitespace-pre-wrap">{msg.text}</div>
-                        <div className="flex justify-between items-center mt-2 text-[11px] text-gray-400">
-                          <span>{msg.timestamp}</span>
-                          {msg.role === 'bot' && (
-                            <button
-                              onClick={() => speakText(msg.text)}
-                              title="Listen"
-                              className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                            >
-                              🔊
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      {isUser && <div className="text-2xl w-8 h-8 flex items-center justify-center">{avatar}</div>}
-                    </div>
-                  );
-                })}
-                {typingText && (
-                  <div className="flex items-end mb-4 gap-2">
-                    <div className="text-2xl w-8 h-8 flex items-center justify-center">👩‍⚖️</div>
-                    <div className="max-w-[75%] px-4 py-3 rounded-2xl bg-gray-100 text-gray-900 shadow-md text-sm animate-pulse">
-                      {typingText}
-                    </div>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder={ui.askPlaceholder}
-                  className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring focus:ring-blue-500"
-                />
-                <button
-                  onClick={() => recognitionRef.current?.start()}
-                  type="button"
-                  className={`p-2 rounded-full border transition-all duration-200 ${
-                    listening
-                      ? 'bg-red-100 border-red-300 animate-pulse'
-                      : 'bg-white border-gray-300 hover:bg-gray-100'
-                  }`}
-                  title="Voice Input"
-                >
-                  <Mic className={`h-5 w-5 ${listening ? 'text-red-500' : 'text-gray-600'}`} />
-                </button>
-                <button
-                  onClick={() => handleSend()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
-                  disabled={!input.trim()}
-                >
-                  {ui.send}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <Section title={ui.summary}>
-                <p className="text-gray-700">{analysis.summary}</p>
-              </Section>
-              <Section title={ui.clauses} color="text-blue-600">
-                <ul className="list-disc pl-6">
-                  {analysis.clauses.map((clause, i) => (
-                    <li key={i} className="text-gray-700 mb-2">{clause}</li>
-                  ))}
-                </ul>
-              </Section>
-              <Section title={ui.risks} color="text-red-600">
-                <ul className="list-disc pl-6">
-                  {analysis.risks.map((risk, i) => (
-                    <li key={i} className="text-gray-700 mb-2">{risk}</li>
-                  ))}
-                </ul>
-              </Section>
-              <Section title={ui.suggestions} color="text-green-600">
-                <ul className="list-disc pl-6">
-                  {analysis.suggestions.map((s, i) => (
-                    <li key={i} className="text-gray-700 mb-2">{s}</li>
-                  ))}
-                </ul>
-              </Section>
-            </>
-          )}
         </div>
 
-        {showDocument && (
-          <div className="flex-1 p-6 overflow-y-auto bg-gray-50 rounded-r-2xl">
-            <h3 className="text-lg font-semibold mb-4">📖 {ui.fullDocument}</h3>
-            <div className="text-gray-700 whitespace-pre-wrap">
-              {analysis.fullText}
+        <h2 className="text-2xl font-bold mb-4">
+          {chatMode ? `💬 ${ui.chatWithDoc}` : `📄 ${ui.legalDocAnalysis}`}
+        </h2>
+
+        {chatMode ? (
+          <div className="flex flex-col flex-1 min-h-0">
+            <motion.div
+  key={clearing ? 'clearing' : 'chat-active'}
+  initial={{ opacity: 1 }}
+  animate={{ opacity: clearing ? 0 : 1 }}
+  transition={{ duration: 1 }}
+  className="flex-1 overflow-y-auto mb-4 pr-2"
+>
+              {messages.map((msg, i) => {
+                const isUser = msg.role === 'user';
+                const avatar = isUser ? '🧑‍💼' : '👩‍⚖️';
+                return (
+                  <div
+                    key={i}
+                    className={`flex items-end mb-4 ${isUser ? 'justify-end' : 'justify-start'} gap-2 animate-fade-up`}
+                  >
+                    {!isUser && <div className="text-2xl w-8 h-8 flex items-center justify-center">{avatar}</div>}
+                    <div className={`group relative max-w-[75%] px-4 py-3 rounded-2xl text-sm shadow-md ${
+                      isUser ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-gray-100 text-gray-900 rounded-bl-sm'
+                    }`}>
+                      <div className="whitespace-pre-wrap">{msg.text}</div>
+                      <div className="flex justify-between items-center mt-2 text-[11px] text-gray-400">
+                        <span>{msg.timestamp}</span>
+                        {msg.role === 'bot' && (
+  <button
+    onClick={() => speakBotMessage(msg.text, i)}
+    title={playingMessageIndex === i ? 'Stop Voice' : 'Play Voice'}
+    className={`ml-2 transition-opacity duration-200 ${
+      playingMessageIndex === i ? 'text-blue-600' : 'text-gray-400 group-hover:opacity-100 opacity-0'
+    }`}
+  >
+    {playingMessageIndex === i ? '⏹️' : '🔊'}
+  </button>
+)}
+
+                      </div>
+                    </div>
+                    {isUser && <div className="text-2xl w-8 h-8 flex items-center justify-center">{avatar}</div>}
+                  </div>
+                );
+              })}
+              {typingText && (
+                <div className="flex items-end mb-4 gap-2 animate-pulse">
+                  <div className="text-2xl w-8 h-8 flex items-center justify-center">👩‍⚖️</div>
+                  <div className="max-w-[75%] px-4 py-3 rounded-2xl bg-gray-100 text-gray-900 shadow-md text-sm">
+                    {typingText}
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </motion.div>
+
+            <div className="flex items-center gap-2">
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                placeholder={ui.askPlaceholder}
+                className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring focus:ring-blue-500"
+              />
+              <button
+                onClick={() => recognitionRef.current?.start()}
+                type="button"
+                className={`p-2 rounded-full border transition-all duration-200 ${
+                  listening
+                    ? 'bg-red-100 border-red-300 animate-pulse'
+                    : 'bg-white border-gray-300 hover:bg-gray-100'
+                }`}
+                title="Voice Input"
+              >
+                <Mic className={`h-5 w-5 ${listening ? 'text-red-500' : 'text-gray-600'}`} />
+              </button>
+              <button
+                onClick={() => handleSend()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
+                disabled={!input.trim()}
+              >
+                {ui.send}
+              </button>
             </div>
+          </div>
+        ) : (
+          <div className="space-y-6 overflow-y-auto pr-2 animate-fade-in">
+            <div className="flex justify-end gap-4 mb-4">
+              <button
+                onClick={() => downloadSection('summary')}
+                className="px-3 py-1 text-sm bg-green-100 border border-green-300 text-green-700 rounded hover:bg-green-200 transition"
+              >
+                ⬇️ {ui.downloadSummary || 'Download Summary'}
+              </button>
+              <button
+                onClick={() => downloadSection('analysis')}
+                className="px-3 py-1 text-sm bg-yellow-100 border border-yellow-300 text-yellow-700 rounded hover:bg-yellow-200 transition"
+              >
+                ⬇️ {ui.downloadAnalysis || 'Download Analysis'}
+              </button>
+            </div>
+
+            <Section title={ui.summary}>
+              <p className="text-gray-700 leading-relaxed text-sm whitespace-pre-wrap">{analysis.summary}</p>
+            </Section>
+            <Section title={ui.clauses} color="text-blue-600">
+              <ul className="list-disc pl-6 text-sm text-gray-700">
+                {analysis.clauses.map((clause, i) => (
+                  <li key={i} className="mb-2">{clause}</li>
+                ))}
+              </ul>
+            </Section>
+            <Section title={ui.risks} color="text-red-600">
+              <ul className="list-disc pl-6 text-sm text-gray-700">
+                {analysis.risks.map((risk, i) => (
+                  <li key={i} className="mb-2">{risk}</li>
+                ))}
+              </ul>
+            </Section>
+            <Section title={ui.suggestions} color="text-green-600">
+              <ul className="list-disc pl-6 text-sm text-gray-700">
+                {analysis.suggestions.map((s, i) => (
+                  <li key={i} className="mb-2">{s}</li>
+                ))}
+              </ul>
+            </Section>
           </div>
         )}
       </div>
+
+      {showDocument && (
+        <div className="flex-1 p-6 overflow-y-auto bg-gray-50 rounded-r-2xl animate-fade-in">
+          <h3 className="text-lg font-semibold mb-4">📖 {ui.fullDocument}</h3>
+          <div className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">
+            {analysis.fullText}
+          </div>
+        </div>
+      )}
     </div>
-  );
+  </div>
+);
+
 };
 
 export default AnalysisModal;

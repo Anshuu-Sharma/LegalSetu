@@ -25,8 +25,7 @@ const developers = [
     name: "Ansh Sharma",
     img: anshuImg,
     quote:
-      "Designing clean, intuitive interfaces that make legal tech accessible to all — with empathy and elegance.",
-    github: "https://github.com/Anshuu-Sharma",
+      "Building AI that doesn’t just answer — it understands your language, your rights, your reality.",
     linkedin: "https://www.linkedin.com/in/ansh-sharma-36a936143/",
     instagram: "https://www.instagram.com/ansh.sha.rma/",
   },
@@ -34,7 +33,7 @@ const developers = [
     name: "Shubham Garg",
     img: shubhamImg,
     quote:
-      "I'm Shubham Garg, the mind behind GauZen. Passionate about AI & agriculture, I strive to make cattle farming smarter.",
+      "Making legal help as easy as chatting with a friend — that’s the dream I’m coding into reality.",
     github: "https://github.com/Immortal-CyberGuy/",
     linkedin: "https://www.linkedin.com/in/real-shubham-garg",
     instagram: "https://www.instagram.com/gargshubham2411/",
