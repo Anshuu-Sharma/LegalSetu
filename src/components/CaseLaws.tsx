@@ -121,7 +121,13 @@ useEffect(() => {
   
     
   return (
-    <div className="mt-16">
+    <div className="min-h-screen bg-gradient-to-br from-[#e0f2ff] via-white to-[#f3e8ff] py-12 px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8"
+        ></motion.div>
       {/* Header Container */}
       <div className="max-w-2xl mx-auto p-6 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 mb-8">
         <div className="flex items-center justify-between mb-2">
@@ -276,7 +282,7 @@ useEffect(() => {
           )
         ) : null}
       </div>
-    </div>
+      </div>
   );
 };
 

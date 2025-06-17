@@ -207,12 +207,13 @@ useEffect(() => {
   
 
 return (
-  <motion.div
-    initial={{ opacity: 0, y: 30 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.6, ease: "easeOut" }}
-    className="max-w-3xl mx-auto py-8 px-4"
-  >
+  <div className="min-h-screen bg-gradient-to-br from-[#e0f2ff] via-white to-[#f3e8ff] py-12 px-4">
+    <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8"
+      >
     <ChatHeader
       title={localizedText.headerTitle}
       subtitle={localizedText.headerSubtitle}
@@ -258,6 +259,8 @@ return (
       />
     )}
   </motion.div>
+  </div>
+  
 );
 };
 

@@ -216,14 +216,15 @@ useEffect(() => {
 
 
 return (
-  <div className="min-h-screen px-4 pb-6 bg-gradient-to-br from-white to-blue-50">
+ <div className="min-h-screen bg-gradient-to-br from-[#e0f2ff] via-white to-[#f3e8ff] py-12 px-4">
+
     {/* Chat Header */}
     
-    <motion.div
-      className="mt-6 mb-4 flex justify-center"
-      initial={{ opacity: 0, y: -20 }}
+  <motion.div
+      initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8"
     >
       <ChatHeader title={localizedText.headerTitle} subtitle={localizedText.headerSubtitle} />
     </motion.div>
@@ -410,7 +411,7 @@ return (
         </div>
       </motion.div>
     </div>
-  </div>
+</div>
 );
 
 

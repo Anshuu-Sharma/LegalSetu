@@ -63,7 +63,10 @@ const FileUploader: React.FC<Props> = ({
           {chooseFileLabel}
         </label>
 
-        <p className="text-xs text-gray-500 mt-1">{fileTypesLabel}</p>
+        <div className="flex justify-center space-x-2 text-sm text-gray-600">
+            <p className="px-2.5 py-1 bg-gray-100 rounded-md">{fileTypesLabel}</p>
+        </div>
+        
       </div>
     </motion.div>
   );
