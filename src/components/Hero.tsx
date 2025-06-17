@@ -11,7 +11,7 @@ interface HeroProps {
 
 const dropVariants = {
   initial: { opacity: 0, y: -120, scale: 0.9 },
-  animate: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 120, damping: 18 } },
+  animate: { opacity: 1, y: 0, scale: .5, transition: { type: 'spring', stiffness: 120, damping: 18 } },
 };
 
 const floatTransition = {
@@ -56,7 +56,7 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px] w-full h-full"></div>
       </div>
 
-      <div className="relative w-full px-4 sm:px-6 lg:px-8 py-20">
+      <div className=" flex justify-center relative w-full max-w-20xl px-4 sm:px-6 lg:px-8 py-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           {/* Left Content */}
           <motion.div
@@ -189,7 +189,7 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
                 <h3 className="text-2xl font-bold text-gray-800 mb-2">
                   <LocalizedText text="LegalBot AI" />
                 </h3>
-                <p className="text-blue-600 font-medium">
+                <p className="text-blue-600 font-large">
                   <LocalizedText text="Your Personal Legal Assistant" />
                 </p>
               </div>
