@@ -39,8 +39,17 @@ const CaseLaws: React.FC = () => {
   const [results, setResults] = useState<ConstitutionArticle[]>([]);
   const [loading, setLoading] = useState(true);
   // const [language, setLanguage] = useState('en');
+  const [placeholder, setPlaceholder] = useState("Search by keyword or article number (e.g., 'article 14', 'equality')");
   const [expandedArticle, setExpandedArticle] = useState<string | number | null>(null);
 
+  useEffect(() => {
+    let isMounted = true;
+    t("Search by keyword or article number (e.g., 'article 14', 'equality')").then(translated => {
+      if (isMounted) setPlaceholder(translated);
+    });
+    return () => { isMounted = false; };
+  }, [t, language]);
+  
   useEffect(() => {
     fetch('/constitution_of_india.json')
       .then(res => res.json())
@@ -176,7 +185,7 @@ useEffect(() => {
             type="text"
             value={searchTerm}
             onChange={handleSearch}
-            placeholder="Search by keyword or article number (e.g., 'article 14', 'equality')"
+            placeholder={placeholder}
             className="w-full p-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all shadow text-base"
           />
           <Search className="absolute right-4 top-4 text-gray-500 pointer-events-none" />
