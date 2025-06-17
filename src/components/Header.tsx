@@ -168,6 +168,7 @@ const Header: React.FC<HeaderProps> = ({
                 )}
               </motion.button>
             ))}
+            </nav>
             {/* Language Dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
@@ -199,6 +200,7 @@ const Header: React.FC<HeaderProps> = ({
                 </div>
               )}
             </div>
+
             {/* Profile/Logout or Get Started */}
             {user ? (
               <div className="relative" ref={profileRef}>
@@ -243,7 +245,7 @@ const Header: React.FC<HeaderProps> = ({
                 </motion.button>
               )
             )}
-          </nav>
+          
 
           {/* Mobile Menu Button */}
           <button
