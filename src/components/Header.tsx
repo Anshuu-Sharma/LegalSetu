@@ -68,8 +68,8 @@ const Header: React.FC<HeaderProps> = ({
     { name: 'AI Chat', id: 'chat' },
     { name: 'Documents', id: 'documents' },
     { name: 'Case Laws', id: 'cases' }, 
-    { name: 'About Us', id: 'about_us' }, 
-    { name: 'Forms', id: 'forms' }
+    { name: 'Forms', id: 'forms' },
+    { name: 'About Us', id: 'about_us' }
   ];
 
   const getUserLabel = () =>
