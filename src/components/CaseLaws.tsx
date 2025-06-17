@@ -25,6 +25,7 @@ const languages = [
 
 
 
+
 interface ConstitutionArticle {
   article: string | number;
   title: string;
@@ -238,7 +239,7 @@ useEffect(() => {
                   />
                 </div>
                 <div className="mt-6 text-right">
-                  <span className="text-blue-500 text-sm italic">(Click anywhere to go back)</span>
+                  <span className="text-blue-500 text-sm italic"><LocalizedText text='(Click anywhere to go back)'/></span>
                 </div>
               </div>
             </div>
