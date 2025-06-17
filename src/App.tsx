@@ -12,6 +12,7 @@ import AboutUs from './components/AboutUs.tsx';
 import { TranslationProvider } from './contexts/TranslationContext';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import CaseLaws from './components/CaseLaws';
 
 const App: React.FC = () => {
   // Firebase authentication state
@@ -113,6 +114,8 @@ const App: React.FC = () => {
           {activeSection === 'documents' && <DocumentUpload />}
           {activeSection === 'forms' && <FormFilling />}
           {activeSection === 'about_us' && <AboutUs />}
+          {activeSection === 'cases' && <CaseLaws />}
+
         </main>
 
         <Footer setActiveSection={setActiveSection} />
