@@ -463,7 +463,7 @@
 import React, { useState, useRef } from 'react';
 import { motion } from "framer-motion";
 import { useTranslation } from '../../contexts/TranslationContext';
-import { Upload, FileText, Mic, Volume2, Download, Check } from 'lucide-react';
+import { Upload, FileText, Mic, Volume2, Download, Check, Sparkles, Languages } from 'lucide-react';
 import LocalizedText from '../LocalizedText';
 
 interface FormField {
@@ -477,9 +477,25 @@ interface FormField {
   required?: boolean;
 
 }
+const languages = [
+  { code: 'en', name: 'English' },
+  { code: 'hi', name: 'हिन्दी' },
+  { code: 'bn', name: 'বাংলা' },
+  { code: 'te', name: 'తెలుగు' },
+  { code: 'ta', name: 'தமிழ்' },
+  { code: 'mr', name: 'मराठी' },
+  { code: 'gu', name: 'ગુજરાતી' },
+  { code: 'kn', name: 'ಕನ್ನಡ' },
+  { code: 'ml', name: 'മലയാളം' },
+  { code: 'or', name: 'ଓଡ଼ିଆ' },
+  { code: 'pa', name: 'ਪੰਜਾਬੀ' },
+  { code: 'as', name: 'অসমীয়া' },
+  { code: 'ne', name: 'नेपाली' },
+  { code: 'ur', name: 'اُردُو' }
+];
 
 const FormFilling: React.FC = () => {
-  const { language } = useTranslation();
+  const { language, setLanguage } = useTranslation();
   const [file, setFile] = useState<File | null>(null);
   const [formId, setFormId] = useState<string | null>(null);
   const [formFields, setFormFields] = useState<FormField[]>([]);
@@ -710,7 +726,7 @@ return (
       className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8"
     >
       {/* Top Intro Section */}
-      <div className="text-center mb-14">
+      {/* <div className="text-center mb-14">
         <motion.h1
           className="text-5xl sm:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-transparent bg-clip-text tracking-tight drop-shadow-md"
           initial={{ opacity: 0 }}
@@ -728,6 +744,48 @@ return (
         >
           <LocalizedText text="Upload your form. Let our AI detect fields, auto-fill in your regional language, and deliver a ready-to-use document." />
         </motion.p>
+      </div> */}
+      <div className="mt-16">
+      {/* Header Container */}
+      <div className="max-w-5xl mx-auto p-6 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 mb-8">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-4">
+            <motion.div
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="relative w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-700 rounded-2xl flex items-center justify-center shadow-lg"
+            >
+              <FileText className="w-12 h-7 text-white" />
+              <div className="absolute -top-1 -right-1">
+                <Sparkles className="w-4 h-4 text-yellow-400" />
+              </div>
+            </motion.div>
+            <div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <LocalizedText text='AI-Powered Form Assistant' />
+              </h2>
+              <p className="text-sm text-green-600 flex items-center font-medium">
+                <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
+                <LocalizedText text='Upload your form. Let our AI detect fields, auto-fill in your regional language, and deliver a ready-to-use document.'/>
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <Languages className="w-5 h-5 text-gray-500" />
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="bg-white/80 backdrop-blur-sm rounded-xl px-4 py-2 text-sm border border-gray-200 focus:ring-2 focus:ring-blue-500"
+            >
+              {languages.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
       </div>
 
       {/* Upload Panel / Form Panel */}
