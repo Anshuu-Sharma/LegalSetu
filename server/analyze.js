@@ -127,12 +127,14 @@ Instructions:
 - Mention laws only if really needed. Prefer real actions over legal text.
 - If the answer is in paragraph form, limit to one short paragraph.
 - But if bullet points are used, each one must be clearly separated by a newline.
-- End every response with: “This is general legal guidance. For personal advice, consult a lawyer.”
+- Only end with this line — “This is general legal guidance. For personal advice, consult a lawyer.” — **if the user is asking for legal help, legal procedures, rights, or actions.**
+- DO NOT add the disclaimer for casual greetings, jokes, or non-legal chit-chat.
 
 Now respond to the user's query:
 
 ${context}
 `.trim();
+
 
 
 

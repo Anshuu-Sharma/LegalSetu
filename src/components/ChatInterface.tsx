@@ -131,10 +131,15 @@ const ChatInterface = () => {
   };
 
   const speakText = (text: string) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = language || 'en-IN';
-    window.speechSynthesis.speak(utterance);
-  };
+  if (!isTtsEnabled) return;
+
+  window.speechSynthesis.cancel(); // Stop any current speech
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = language || 'en-IN';
+  window.speechSynthesis.speak(utterance);
+};
+
 
   const toggleMic = () => {
     if (isThinking) return;
@@ -224,6 +229,8 @@ const handleClearChat = () => {
     setClearing(false);
   }, 500); // match animation duration
 };
+const [isTtsEnabled, setIsTtsEnabled] = useState(true);
+
 
 
 
@@ -384,15 +391,29 @@ return (
 
               {msg.sender === 'bot' && (
                 <button
-                  onClick={() => speakText(msg.text)}
-                  className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-full bg-white shadow hover:bg-blue-100"
-                  title="Read aloud"
-                >
-                  <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path d="M11 5L7 9H4v6h3l4 4V5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M15.54 8.46a5 5 0 010 7.07m2.12-9.19a9 9 0 010 12.73" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
+  onClick={() => {
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+      setIsTtsEnabled(false);
+    } else {
+      setIsTtsEnabled(true);
+      speakText(msg.text);
+    }
+  }}
+  className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-full bg-white shadow hover:bg-blue-100"
+  title={isTtsEnabled ? "Click to stop reading" : "Click to read aloud"}
+>
+  <svg
+    className={`w-4 h-4 ${isTtsEnabled ? 'text-blue-600' : 'text-gray-400'}`}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path d="M11 5L7 9H4v6h3l4 4V5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M15.54 8.46a5 5 0 010 7.07m2.12-9.19a9 9 0 010 12.73" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+</button>
+
               )}
             </div>
 
