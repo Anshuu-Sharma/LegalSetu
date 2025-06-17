@@ -16,10 +16,10 @@ interface AnalysisResult {
 
 interface Doc {
   id: string;
-  analysisId?: string; // Use analysisId from backend
+  analysisId?: string;
   name: string;
   type: string;
-  size: string;
+  size: string; // size in bytes, as a string
   uploadDate: Date;
   status: 'analyzing' | 'completed' | 'error';
   analysis?: AnalysisResult;
@@ -28,10 +28,27 @@ interface Doc {
 interface Props {
   documents: Doc[];
   onDelete: (id: string) => void;
-  onViewAnalysis: (analysisId: string) => void; // Now expects analysisId
+  onViewAnalysis: (analysisId: string) => void;
   uploadedDocsLabel: string;
   noDocsLabel: string;
 }
+
+// 🧠 Utility function to convert bytes to readable format
+const formatBytes = (bytes: string | number): string => {
+  const size = typeof bytes === "string" ? parseInt(bytes) : bytes;
+  if (isNaN(size)) return "Invalid size";
+
+  const units = ["Bytes", "KB", "MB", "GB", "TB"];
+  let index = 0;
+  let value = size;
+
+  while (value >= 1024 && index < units.length - 1) {
+    value /= 1024;
+    index++;
+  }
+
+  return `${value.toFixed(2)} ${units[index]}`;
+};
 
 const DocumentList: React.FC<Props> = ({
   documents,
@@ -64,7 +81,7 @@ const DocumentList: React.FC<Props> = ({
                 <div>
                   <h4 className="text-sm font-medium text-gray-800">{doc.name}</h4>
                   <p className="text-xs text-gray-500">
-                    {doc.size} • {new Date(doc.uploadDate).toLocaleDateString()}
+                    {formatBytes(doc.size)} • {new Date(doc.uploadDate).toLocaleDateString()}
                   </p>
                 </div>
               </div>
@@ -89,7 +106,6 @@ const DocumentList: React.FC<Props> = ({
               </div>
             </div>
 
-            {/* Status Indicators */}
             <div className="mt-3">
               {doc.status === 'analyzing' && (
                 <p className="text-sm text-yellow-500">⏳ Analyzing...</p>

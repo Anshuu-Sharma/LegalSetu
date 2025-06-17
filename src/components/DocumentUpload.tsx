@@ -82,7 +82,7 @@ const DocumentUpload: React.FC = () => {
           id,
           name: file.name,
           type: file.type,
-          size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+          size: file.size.toString(),
           uploadDate: new Date(),
           status: 'analyzing'
         };
