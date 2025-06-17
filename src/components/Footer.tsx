@@ -1,5 +1,6 @@
 import React from 'react';
 import { Scale, Mail, Phone, MapPin, Facebook, Twitter, Linkedin, Instagram } from 'lucide-react';
+import { motion } from 'framer-motion';
 import LocalizedText from './LocalizedText';
 
 interface FooterProps {
@@ -14,15 +15,21 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
           {/* Brand */}
           <div className="md:col-span-1">
             <div className="flex items-center space-x-3 mb-4">
-              <div className="bg-primary-600 p-2 rounded-lg">
-                <Scale className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold">LegalBot AI</h3>
-                <p className="text-sm text-gray-400">
-                  <LocalizedText text="Your Legal Assistant" />
-                </p>
-              </div>
+              <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="flex items-center space-x-3"
+                        >
+                          <div className="bg-gradient-to-br from-blue-600 to-purple-700 p-3 rounded-2xl shadow-lg">
+                            <Scale className="h-7 w-7 text-white" />
+                          </div>
+                          <div>
+                            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-700 bg-clip-text text-transparent">
+                              LegalBot AI
+                            </h1>
+                            <p className="text-xs text-gray-500 font-medium">Powered by AI</p>
+                          </div>
+                        </motion.div>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed mb-4">
               <LocalizedText text="India’s first AI-powered legal assistant. Fast, accurate, and multilingual legal services." />
@@ -87,11 +94,16 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
               <LocalizedText text="Legal Areas" />
             </h4>
             <ul className="space-y-2 text-sm text-gray-400">
-              <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Family Law" /></a></li>
-              <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Property Law" /></a></li>
+              <li><button
+                  className="hover:underline  bg-transparent border-none p-0"
+                  onClick={() => setActiveSection('cases')}
+                >
+                  <LocalizedText text="Constitution" />
+                </button></li>
+              {/* <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Property Law" /></a></li>
               <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Business Law" /></a></li>
               <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Criminal Law" /></a></li>
-              <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Labour Law" /></a></li>
+              <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Labour Law" /></a></li> */}
             </ul>
           </div>
 
@@ -103,7 +115,7 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
             <div className="space-y-3 text-sm text-gray-400">
               <div className="flex items-center space-x-3">
                 <Mail className="w-4 h-4" />
-                <span>support@legalbot.ai</span>
+                <span>DM on our socials!</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Phone className="w-4 h-4" />
@@ -113,9 +125,15 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
                 <MapPin className="w-4 h-4" />
                 <span>Delhi, India</span>
               </div>
+              <button
+                  className="hover:underline  bg-transparent border-none p-0"
+                  onClick={() => setActiveSection('easter')}
+                >
+                  <LocalizedText text="Easter Egg" />
+                </button>
             </div>
             
-            <div className="mt-6">
+            {/* <div className="mt-6">
               <h5 className="font-medium mb-2">
                 <LocalizedText text="Subscribe to our Newsletter" />
               </h5>
@@ -129,7 +147,7 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
                   <LocalizedText text="Subscribe" />
                 </button>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
 

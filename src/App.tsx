@@ -13,6 +13,7 @@ import { TranslationProvider } from './contexts/TranslationContext';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import CaseLaws from './components/CaseLaws';
+import EasterEgg from './components/EasterEgg.tsx';
 
 const App: React.FC = () => {
   // Firebase authentication state
@@ -116,6 +117,7 @@ const App: React.FC = () => {
           {activeSection === 'about_us' && <AboutUs />}
           {activeSection === 'cases' && <CaseLaws />}
 
+          {activeSection === 'easter' && <EasterEgg />}
         </main>
 
         <Footer setActiveSection={setActiveSection} />
