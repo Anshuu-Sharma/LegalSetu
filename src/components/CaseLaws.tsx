@@ -215,6 +215,7 @@ useEffect(() => {
                   <ChevronUp className="w-6 h-6 text-gray-400" />
                 </div>
                 <div className="mt-6 text-gray-700">
+                  <LocalizedText text={`${expandedCard.description}`}/>
                   <Highlighter
                     highlightClassName="search-highlight"
                     searchWords={searchWords}
