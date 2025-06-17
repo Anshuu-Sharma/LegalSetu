@@ -119,7 +119,7 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
                 { number: '100%', label: 'Confidential' },
                 { number: '10+', label: 'Languages' },
                 { number: '24/7', label: 'Availability' },
-                { number: '< 2 min', label: 'Response Time' },
+                { number: '< 1 min', label: 'Response Time' },
               ].map((stat, index) => (
                 <motion.div
                   key={index}
