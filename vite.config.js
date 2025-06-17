@@ -3,7 +3,7 @@ export default {
   // ...other config
   server: {
     proxy: {
-      '/api': 'http://localhost:4000',
+      '/api': 'https://legalsetu.onrender.com',
     }
   }
 };
