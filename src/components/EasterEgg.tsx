@@ -1,5 +1,6 @@
 import React from 'react';
 import MagnetLines from './styles/magnet';
+import LocalizedText from './LocalizedText';
 
 const EasterEgg = () => {
   return (
@@ -37,7 +38,7 @@ const EasterEgg = () => {
           whiteSpace: 'nowrap',
         }}
       >
-        HEY!
+        <LocalizedText text="HEY!" />
       </div>
       {/* MagnetLines grid with soft blur */}
       <div

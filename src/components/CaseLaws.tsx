@@ -24,7 +24,6 @@ const languages = [
 ];
 
 
-const { t, language, setLanguage } = useTranslation();
 
 interface ConstitutionArticle {
   article: string | number;
@@ -33,6 +32,7 @@ interface ConstitutionArticle {
 }
 
 const CaseLaws: React.FC = () => {
+  const { t, language, setLanguage } = useTranslation();
   const [articles, setArticles] = useState<ConstitutionArticle[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [results, setResults] = useState<ConstitutionArticle[]>([]);
