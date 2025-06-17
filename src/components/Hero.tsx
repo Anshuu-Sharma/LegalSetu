@@ -10,8 +10,8 @@ interface HeroProps {
 }
 
 const dropVariants = {
-  initial: { opacity: 0, y: -120, scale: 0.9 },
-  animate: { opacity: 1, y: 0, scale: .5, transition: { type: 'spring', stiffness: 120, damping: 18 } },
+  initial: { opacity: 0, y: -120, scale: 1 },
+  animate: { opacity: 1, y: 0, scale:1, transition: { type: 'spring', stiffness: 120, damping: 18 } },
 };
 
 const floatTransition = {
