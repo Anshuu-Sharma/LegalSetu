@@ -30,35 +30,41 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ title, subtitle }) => {
   ];
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 mb-8">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-4">
+    <div className="w-full px-4 sm:px-6 md:px-8">
+      <div className="max-w-4xl mx-auto bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 mb-6 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          
+          {/* Title + Icon */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full">
             <motion.div
               animate={{ scale: [1, 1.1, 1] }}
               transition={{ duration: 1.5, repeat: Infinity }}
-              className="relative w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-700 rounded-2xl flex items-center justify-center shadow-lg"
+              className="relative w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-600 to-purple-700 rounded-2xl flex items-center justify-center shadow-lg"
             >
-              <FileText className="w-6 h-6 text-white" />
+              <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               <div className="absolute -top-1 -right-1">
-                <Sparkles className="w-4 h-4 text-yellow-400" />
+                <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
               </div>
             </motion.div>
+
             <div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                <LocalizedText text={title}/>
+              <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <LocalizedText text={title} />
               </h2>
-              <p className="text-sm text-green-600 flex items-center font-medium">
+              <p className="text-sm text-green-600 flex items-center font-medium mt-1">
                 <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
-                <LocalizedText text={subtitle}/>
+                <LocalizedText text={subtitle} />
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
-            <Languages className="w-5 h-5 text-gray-500" />
+
+          {/* Language Selector */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Languages className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="bg-white/80 backdrop-blur-sm rounded-xl px-4 py-2 text-sm border border-gray-200 focus:ring-2 focus:ring-blue-500"
+              className="bg-white/80 backdrop-blur-sm rounded-xl px-3 py-2 text-sm border border-gray-200 focus:ring-2 focus:ring-blue-500"
             >
               {languages.map((lang) => (
                 <option key={lang.code} value={lang.code}>
@@ -69,6 +75,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ title, subtitle }) => {
           </div>
         </div>
       </div>
+    </div>
   );
 };
 
