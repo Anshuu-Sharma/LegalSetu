@@ -15,6 +15,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import CaseLaws from './components/CaseLaws';
 import EasterEgg from './components/EasterEgg.tsx';
 
+
 const App: React.FC = () => {
   // Firebase authentication state
   const [user, setUser] = useState<{
