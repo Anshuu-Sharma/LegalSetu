@@ -1,7 +1,7 @@
 // src/components/FormFilling/FormFilling.tsx
 /// <reference types="vite/client" />
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from "framer-motion";
 import { useTranslation } from '../../contexts/TranslationContext';
 import { Upload, FileText, Mic, Volume2, Download, Check, Sparkles, Languages } from 'lucide-react';
@@ -38,7 +38,10 @@ const languages = [
   { code: 'ur', name: 'اُردُو' }
 ];
 
+
+
 const FormFilling: React.FC = () => {
+  const { t } = useTranslation()
   const { language, setLanguage } = useTranslation();
   const [file, setFile] = useState<File | null>(null);
   const [formId, setFormId] = useState<string | null>(null);
@@ -54,7 +57,7 @@ const FormFilling: React.FC = () => {
 const [fileName, setFileName] = useState<string | null>(null);
 const [pdfHeight, setPdfHeight] = useState<number | null>(null);
 const [scaleFactor, setScaleFactor] = useState<{ x: number; y: number }>({ x: 1, y: 1 });
-
+const [placeholders, setPlaceholders] = useState<Record<string, string>>({});
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -266,6 +269,20 @@ const fillForm = async () => {
     }
   };
 
+  useEffect(() => {
+    const fetchPlaceholders = async () => {
+      const newPlaceholders: Record<string, string> = {};
+      for (const field of formFields) {
+        newPlaceholders[field.id] = await t(`Enter ${field.label}...`);
+      }
+      setPlaceholders(newPlaceholders);
+    };
+    if (formFields.length > 0) {
+      fetchPlaceholders();
+    }
+  }, [formFields, t, language]);
+  
+
 return (
   <div className="min-h-screen bg-gradient-to-br from-[#e0f2ff] via-white to-[#f3e8ff] py-12 px-4">
     <motion.div
@@ -386,7 +403,7 @@ return (
                       <Volume2 className="h-5 w-5" />
                     </button>
                     <span className="font-medium text-gray-900 ml-2">
-                      {field.label}
+                    <LocalizedText text={field.label} />
                       {field.required && (
                         <span className="text-red-500 ml-1">*</span>
                       )}
@@ -418,7 +435,7 @@ return (
                   value={formData[field.id] || ""}
                   onChange={(e) => handleInputChange(field.id, e.target.value)}
                   className="w-full px-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  placeholder={`Enter ${field.label}...`}
+                  placeholder={placeholders[field.id] || `Enter ${field.label}...`}
                   required={field.required}
                 />
               </motion.div>
