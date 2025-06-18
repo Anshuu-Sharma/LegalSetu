@@ -157,7 +157,7 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
               },
               transition: floatTransition
             })}
-            className="relative cursor-grab active:cursor-grabbing mt-10 lg:mt-0"
+            className="relative cursor-grab active:cursor-grabbing mt-10 lg:mt-0 hidden lg:block"
             style={{ touchAction: 'none' }}
           >
             <div className="relative bg-white/40 backdrop-blur-2xl rounded-3xl p-8 border border-white/50 shadow-2xl select-none ">
