@@ -17,7 +17,7 @@ const developers = [
     img: srishtiImg,
     quote:
       "Blending AI and law, I build tools that simplify legal complexities — from document analyzers to scam-detection solutions.",
-    github: "https://github.com/Srishti-Ahuja14/",
+    
     linkedin: "https://www.linkedin.com/in/srishti-ahuja-b7834928b/",
     instagram: "https://www.instagram.com/srishti_ahuja14/",
   },
@@ -34,7 +34,7 @@ const developers = [
     img: shubhamImg,
     quote:
       "Making legal help as easy as chatting with a friend — that’s the dream I’m coding into reality.",
-    github: "https://github.com/Immortal-CyberGuy/",
+    
     linkedin: "https://www.linkedin.com/in/real-shubham-garg",
     instagram: "https://www.instagram.com/gargshubham2411/",
   },

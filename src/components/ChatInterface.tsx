@@ -352,7 +352,9 @@ return (
               <span className="w-2 h-2 bg-gray-600 rounded-full animate-bounce delay-150" />
               <span className="w-2 h-2 bg-gray-600 rounded-full animate-bounce delay-300" />
             </div>
-            <span className="text-gray-600">Thinking...</span>
+            <span className="text-gray-600">
+              <LocalizedText text='Thinking...'/>
+            </span>
           </div>
         </motion.div>
       ) : (
