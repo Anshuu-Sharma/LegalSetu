@@ -24,24 +24,24 @@ const allowedOrigins = [
   process.env.PRODUCTION_URL
 ].filter(Boolean);
 
-// app.use(cors({
-//   origin: function (origin, callback) {
-//     if (!origin) return callback(null, true);
-//     if (allowedOrigins.some(rule =>
-//       typeof rule === 'string' ? rule === origin : rule.test(origin)
-//     )) {
-//       return callback(null, true);
-//     }
-//     return callback(new Error(`Origin '${origin}' not allowed by CORS`), false);
-//   },
-//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//   allowedHeaders: ['Content-Type', 'Authorization']
-// }));
 app.use(cors({
-  origin: '*',
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.some(rule =>
+      typeof rule === 'string' ? rule === origin : rule.test(origin)
+    )) {
+      return callback(null, true);
+    }
+    return callback(new Error(`Origin '${origin}' not allowed by CORS`), false);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+// app.use(cors({
+//   origin: '*',
+//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//   allowedHeaders: ['Content-Type', 'Authorization']
+// }));
 
 
 app.use(express.json({ limit: '50mb' }));
