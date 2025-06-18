@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useTranslation } from '../../contexts/TranslationContext';
 import { Upload, FileText, Mic, Volume2, Download, Check, Sparkles, Languages } from 'lucide-react';
 import LocalizedText from '../LocalizedText';
+import ChatHeader from '../ChatHeader.tsx';
 
 interface FormField {
   id: string;
@@ -262,45 +263,10 @@ return (
       className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8"
     >
       {/* Header Container */}
-      <div className="max-w-5xl mx-auto p-6 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 mb-8">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-4">
-            <motion.div
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-              className="relative w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-700 rounded-2xl flex items-center justify-center shadow-lg"
-            >
-              <FileText className="w-12 h-7 text-white" />
-              <div className="absolute -top-1 -right-1">
-                <Sparkles className="w-4 h-4 text-yellow-400" />
-              </div>
-            </motion.div>
-            <div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                <LocalizedText text='Form Assistant' />
-              </h2>
-              <p className="text-sm text-green-600 flex items-center font-medium">
-                <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
-                <LocalizedText text='Upload your form. Easily fill in your regional language, and download it.'/>
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Languages className="w-5 h-5 text-gray-500" />
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="bg-white/80 backdrop-blur-sm rounded-xl px-4 py-2 text-sm border border-gray-200 focus:ring-2 focus:ring-blue-500"
-            >
-              {languages.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
+      <ChatHeader
+        title="Form Assistant"
+        subtitle="Upload your form. Easily fill in your regional language, and download it."
+      />
 
 
       {/* Upload Panel / Form Panel */}
