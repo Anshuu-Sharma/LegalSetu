@@ -111,9 +111,10 @@ const [placeholders, setPlaceholders] = useState<Record<string, string>>({});
   const speakFieldLabel = async (fieldName: string) => {
     try {
       if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(fieldName);
-        
-        // Map language codes to BCP-47 format
+        const translatedText = await t(fieldName);  // Translate the label
+  
+        const utterance = new SpeechSynthesisUtterance(translatedText);
+  
         const languageMap: Record<string, string> = {
           'en': 'en-IN',
           'hi': 'hi-IN',
@@ -123,9 +124,14 @@ const [placeholders, setPlaceholders] = useState<Record<string, string>>({});
           'mr': 'mr-IN',
           'gu': 'gu-IN',
           'kn': 'kn-IN',
-          'ml': 'ml-IN'
+          'ml': 'ml-IN',
+          'or': 'or-IN',
+          'pa': 'pa-IN',
+          'as': 'as-IN',
+          'ne': 'ne-IN',
+          'ur': 'ur-IN',
         };
-        
+  
         utterance.lang = languageMap[language] || 'en-IN';
         utterance.rate = 0.9;
         utterance.pitch = 1;
