@@ -193,7 +193,7 @@ const fillForm = async () => {
   
   setIsProcessing(true);
   try {
-    const response = await fetch('/api/forms/fill', {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/forms/fill`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
