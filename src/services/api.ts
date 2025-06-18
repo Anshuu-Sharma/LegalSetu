@@ -200,5 +200,36 @@ export const formAPI = {
       })
     });
     return response.json();
+  },
+  
+  downloadFilledForm: async (downloadUrl: string, fileName: string): Promise<void> => {
+    try {
+      // Fetch the file from the pre-signed URL
+      const response = await fetch(downloadUrl);
+      
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+      
+      // Convert the response to a blob
+      const blob = await response.blob();
+      
+      // Create a download link and trigger it
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName || 'filled-form.pdf';
+      document.body.appendChild(a);
+      a.click();
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      throw error;
+    }
   }
 };

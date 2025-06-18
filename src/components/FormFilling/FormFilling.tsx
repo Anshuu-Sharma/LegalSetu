@@ -7,6 +7,8 @@ import { useTranslation } from '../../contexts/TranslationContext';
 import { Upload, FileText, Mic, Volume2, Download, Check, Sparkles, Languages } from 'lucide-react';
 import LocalizedText from '../LocalizedText';
 import ChatHeader from '../ChatHeader.tsx';
+import { formAPI } from '../../services/api';
+
 
 interface FormField {
   id: string;
@@ -49,6 +51,10 @@ const FormFilling: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [activeFieldId, setActiveFieldId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+const [fileName, setFileName] = useState<string | null>(null);
+const [pdfHeight, setPdfHeight] = useState<number | null>(null);
+const [scaleFactor, setScaleFactor] = useState<{ x: number; y: number }>({ x: 1, y: 1 });
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -79,6 +85,9 @@ const FormFilling: React.FC = () => {
         setFormId(data.formId);
         setFormFields(data.formFields);
         setImageHeight(data.imageHeight);
+        setPdfHeight(data.pdfHeight);
+        setScaleFactor(data.scaleFactor);
+
 
         const initialData: Record<string, string> = {};
         data.formFields.forEach((field: FormField) => {
@@ -203,7 +212,9 @@ const fillForm = async () => {
         formId,
         formData,
         formFields,
-        imageHeight 
+        imageHeight,
+        pdfHeight,
+        scaleFactor
       })
     });
     
@@ -211,6 +222,7 @@ const fillForm = async () => {
     if (data.success) {
       setDownloadUrl(data.downloadUrl);
     } else {
+      setFileName(data.fileName || 'filled-form.pdf');
       alert('Failed to fill form: ' + data.error);
     }
   } catch (error) {

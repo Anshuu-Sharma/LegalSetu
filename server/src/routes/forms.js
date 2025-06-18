@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const aiVisionService = require('../services/aiVisionService');
 const formFillingService = require('../services/formFillingService');
+const { s3 } = require('../config/s3');
 
 const router = express.Router();
 
@@ -104,17 +105,41 @@ router.post('/fill', async (req, res) => {
 
 // Download filled form
 router.get('/download/:fileName', (req, res) => {
-  try {
-    const filePath = path.join('uploads', 'filled', req.params.fileName);
+  // try {
+  //   const filePath = path.join('uploads', 'filled', req.params.fileName);
     
-    if (fs.existsSync(filePath)) {
-      res.download(filePath);
-    } else {
-      res.status(404).json({
-        success: false,
-        error: 'File not found'
-      });
-    }
+  //   if (fs.existsSync(filePath)) {
+  //     res.download(filePath);
+  //   } else {
+  //     res.status(404).json({
+  //       success: false,
+  //       error: 'File not found'
+  //     });
+  //   }
+  // } catch (error) {
+  //   console.error('Download error:', error);
+  //   res.status(500).json({
+  //     success: false,
+  //     error: 'Download failed'
+  //   });
+  // }
+
+  // AWS Version:
+    try {
+    const { fileName } = req.params;
+    const s3Key = `filled-forms/${fileName}`;
+
+    // Generate a new signed URL (in case the previous one expired)
+    const downloadUrl = s3.getSignedUrl('getObject', {
+      Bucket: process.env.AWS_S3_BUCKET_NAME,
+      Key: s3Key,
+      Expires: 3600,
+      ResponseContentDisposition: `attachment; filename="${fileName}"`
+    });
+
+    // Redirect to the signed URL
+    res.redirect(downloadUrl);
+
   } catch (error) {
     console.error('Download error:', error);
     res.status(500).json({
@@ -122,6 +147,7 @@ router.get('/download/:fileName', (req, res) => {
       error: 'Download failed'
     });
   }
+
 });
 
 module.exports = router;
