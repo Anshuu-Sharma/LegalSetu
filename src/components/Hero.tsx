@@ -77,12 +77,12 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
               </span>
             </motion.div>
 
-            <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-9">
+            <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-9 ">
               <span className="bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent">
                 <LocalizedText text="Your AI-Powered" />
               </span>
               <br />
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent pb-6">
                 <LocalizedText text="Legal Buddy" />
               </span>
             </h1>
