@@ -35,6 +35,7 @@ export default {
       },
       screens:{
         navcut: '920px',
+        lg: '1024px',
       }
     },
   },
