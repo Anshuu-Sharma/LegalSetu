@@ -114,15 +114,15 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
             <div className="space-y-3 text-sm text-gray-400">
               <div className="flex items-center space-x-3">
                 <Mail className="w-4 h-4" />
-                <span>DM on our socials!</span>
+                <LocalizedText text="DM on our socials!" />
               </div>
               <div className="flex items-center space-x-3">
                 <Phone className="w-4 h-4" />
-                <span>+91 7217787725</span>
+                <LocalizedText text="+91 7217787725" />
               </div>
               <div className="flex items-center space-x-3">
                 <MapPin className="w-4 h-4" />
-                <span>Delhi, India</span>
+                <LocalizedText text="Delhi, India" />
               </div>
               <button
                   className="hover:underline  bg-transparent border-none p-0"
