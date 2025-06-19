@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
+
 const { initializeDatabase } = require('./src/config/database');
 const { testS3Connection } = require('./src/config/s3');
 
