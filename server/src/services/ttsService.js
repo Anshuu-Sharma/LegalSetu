@@ -5,37 +5,61 @@ const path = require('path');
 
 class TTSService {
   constructor() {
-    this.supportedLanguages = [
-      { code: 'en-IN', name: 'English (India)' },
-      { code: 'hi-IN', name: 'Hindi' },
-      { code: 'ta-IN', name: 'Tamil' },
-      { code: 'te-IN', name: 'Telugu' },
-      { code: 'kn-IN', name: 'Kannada' },
-      { code: 'ml-IN', name: 'Malayalam' },
-      { code: 'bn-IN', name: 'Bengali' },
-      { code: 'gu-IN', name: 'Gujarati' }
-    ];
-  }
+  this.supportedLanguages = [
+    { code: 'en-IN', name: 'English (India)' },
+    { code: 'hi-IN', name: 'Hindi' },
+    { code: 'ta-IN', name: 'Tamil' },
+    { code: 'te-IN', name: 'Telugu' },
+    { code: 'kn-IN', name: 'Kannada' },
+    { code: 'ml-IN', name: 'Malayalam' },
+    { code: 'bn-IN', name: 'Bengali' },
+    { code: 'gu-IN', name: 'Gujarati' },
+    { code: 'mr-IN', name: 'Marathi' },
+    { code: 'or-IN', name: 'Odia' },
+    { code: 'pa-IN', name: 'Punjabi' },
+    { code: 'as-IN', name: 'Assamese' },
+    { code: 'ur-IN', name: 'Urdu' },
+    { code: 'ne-NP', name: 'Nepali' },
+    { code: 'sd-IN', name: 'Sindhi' },
+    { code: 'ks-IN', name: 'Kashmiri' },
+    { code: 'sa-IN', name: 'Sanskrit' },
+    { code: 'doi-IN', name: 'Dogri' },
+    { code: 'mni-IN', name: 'Manipuri' },
+    { code: 'kok-IN', name: 'Konkani' },
+    { code: 'bho-IN', name: 'Bhojpuri' },
+    { code: 'mai-IN', name: 'Maithili' }
+  ];
+}
+
 
   async textToSpeech(text, language) {
     try {
       // Map short language codes to BCP-47 format
       const languageMap = {
-        'en': 'en-IN',
-        'hi': 'hi-IN',
-        'bn': 'bn-IN',
-        'te': 'te-IN',
-        'ta': 'ta-IN',
-        'mr': 'mr-IN',
-        'gu': 'gu-IN',
-        'kn': 'kn-IN',
-        'ml': 'ml-IN',
-        'or': 'or-IN',
-        'pa': 'pa-IN',
-        'as': 'as-IN',
-        'ne': 'ne-NP',
-        'ur': 'ur-IN'
-      };
+  'en': 'en-IN',
+  'hi': 'hi-IN',
+  'ta': 'ta-IN',
+  'te': 'te-IN',
+  'kn': 'kn-IN',
+  'ml': 'ml-IN',
+  'bn': 'bn-IN',
+  'gu': 'gu-IN',
+  'mr': 'mr-IN',
+  'or': 'or-IN',
+  'pa': 'pa-IN',
+  'as': 'as-IN',
+  'ur': 'ur-IN',
+  'ne': 'ne-NP',
+  'sd': 'sd-IN',
+  'ks': 'ks-IN',
+  'sa': 'sa-IN',
+  'doi': 'doi-IN',
+  'mni': 'mni-IN',
+  'kok': 'kok-IN',
+  'bho': 'bho-IN',
+  'mai': 'mai-IN'
+};
+
       
       const langCode = languageMap[language] || 'en-IN';
       
@@ -60,7 +84,7 @@ class TTSService {
       await fs.writeFile(filePath, Buffer.from(audioContent, 'base64'));
       
       return {
-        audioUrl: `/api/forms/audio/${fileName}`,
+        audioUrl: `/uploads/audio/${fileName}`,
         fileName
       };
     } catch (error) {

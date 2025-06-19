@@ -22,6 +22,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Mic } from 'lucide-react';
 import { useTranslation } from '../../contexts/TranslationContext.tsx';
 import { motion } from "framer-motion";
+import VoicePlayer from '../VoicePlayer.tsx';
 
 interface Analysis {
   summary: string;
@@ -293,22 +294,8 @@ const handleClearChat = () => {
 const [playingMessageIndex, setPlayingMessageIndex] = useState<number | null>(null);
 const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-const speakBotMessage = (text: string, index: number) => {
-  if (playingMessageIndex === index) {
-    window.speechSynthesis.cancel();
-    setPlayingMessageIndex(null);
-    return;
-  }
 
-  window.speechSynthesis.cancel(); // Stop any existing speech
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'en-IN';
-  utterance.onend = () => setPlayingMessageIndex(null);
-  speechSynthesisRef.current = utterance;
-  window.speechSynthesis.speak(utterance);
-  setPlayingMessageIndex(index);
-};
-const [speakerEnabled, setSpeakerEnabled] = useState(true); // Speaker toggle
+
 const [clearing, setClearing] = useState(false);  
 
 
@@ -378,16 +365,11 @@ return (
                       <div className="flex justify-between items-center mt-2 text-[11px] text-gray-400">
                         <span>{msg.timestamp}</span>
                         {msg.role === 'bot' && (
-  <button
-    onClick={() => speakBotMessage(msg.text, i)}
-    title={playingMessageIndex === i ? 'Stop Voice' : 'Play Voice'}
-    className={`ml-2 transition-opacity duration-200 ${
-      playingMessageIndex === i ? 'text-blue-600' : 'text-gray-400 group-hover:opacity-100 opacity-0'
-    }`}
-  >
-    {playingMessageIndex === i ? '⏹️' : '🔊'}
-  </button>
+  <div className="ml-2 transition-opacity duration-200 group-hover:opacity-100 opacity-0">
+    <VoicePlayer text={msg.text} index={i} language={language}   />
+  </div>
 )}
+
 
                       </div>
                     </div>

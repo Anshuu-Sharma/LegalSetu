@@ -8,6 +8,7 @@ import { Upload, FileText, Mic, Volume2, Download, Check, Sparkles, Languages } 
 import LocalizedText from '../LocalizedText';
 import ChatHeader from '../ChatHeader.tsx';
 import { formAPI } from '../../services/api';
+import VoicePlayer from '../VoicePlayer.tsx';
 
 
 interface FormField {
@@ -401,13 +402,11 @@ return (
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center">
-                    <button
-                      onClick={() => speakFieldLabel(field.label)}
-                      className="p-2 text-gray-500 hover:text-blue-600"
-                      title="Listen"
-                    >
-                      <Volume2 className="h-5 w-5" />
-                    </button>
+                    <VoicePlayer text={placeholders[field.id]} language={language} />
+
+
+
+
                     <span className="font-medium text-gray-900 ml-2">
                     <LocalizedText text={field.label} />
                       {field.required && (

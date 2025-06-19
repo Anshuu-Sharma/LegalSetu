@@ -14,6 +14,7 @@ import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import CaseLaws from './components/CaseLaws';
 import EasterEgg from './components/EasterEgg.tsx';
+import { TTSProvider } from './contexts/ttsContext';
 
 
 const App: React.FC = () => {
@@ -94,53 +95,55 @@ const App: React.FC = () => {
   };
 
   return (
-    <TranslationProvider>
-      <div className="min-h-screen flex flex-col bg-gray-50 overflow-x-hidden">
-        <Header
-          activeSection={activeSection}
-          setActiveSection={handleSectionChange}
-          onGetStarted={() => requireAuth(() => setActiveSection('chat'))}
-          user={user} 
-          onLogout={handleLogout}
-        />
+    <TTSProvider>
+      <TranslationProvider>
+        <div className="min-h-screen flex flex-col bg-gray-50 overflow-x-hidden">
+          <Header
+            activeSection={activeSection}
+            setActiveSection={handleSectionChange}
+            onGetStarted={() => requireAuth(() => setActiveSection('chat'))}
+            user={user} 
+            onLogout={handleLogout}
+          />
 
-        {/* Main Content */}
-        <main className="flex-1 mt-16">
-          {activeSection === 'home' && (
-            <>
-              <Hero setActiveSection={handleSectionChange} onGetStarted={() => requireAuth(() => setActiveSection('chat'))} />
-              <Features onGetStarted={()=> setActiveSection('documents')} />
-            </>
+          {/* Main Content */}
+          <main className="flex-1 mt-16">
+            {activeSection === 'home' && (
+              <>
+                <Hero setActiveSection={handleSectionChange} onGetStarted={() => requireAuth(() => setActiveSection('chat'))} />
+                <Features onGetStarted={()=> setActiveSection('documents')} />
+              </>
+            )}
+            {activeSection === 'chat' && <ChatInterface />}
+            {activeSection === 'documents' && <DocumentUpload />}
+            {activeSection === 'forms' && <FormFilling />}
+            {activeSection === 'about_us' && <AboutUs />}
+            {activeSection === 'cases' && <CaseLaws />}
+
+            {activeSection === 'easter' && <EasterEgg />}
+          </main>
+
+          <Footer setActiveSection={setActiveSection} />
+
+
+          {/* Auth Modals */}
+          {showLogin && (
+            <Login
+              onSwitchToSignup={handleSwitchToSignup}
+              onClose={handleCloseAuth}
+              onLogin={() => setActiveSection('home')}
+            />
           )}
-          {activeSection === 'chat' && <ChatInterface />}
-          {activeSection === 'documents' && <DocumentUpload />}
-          {activeSection === 'forms' && <FormFilling />}
-          {activeSection === 'about_us' && <AboutUs />}
-          {activeSection === 'cases' && <CaseLaws />}
-
-          {activeSection === 'easter' && <EasterEgg />}
-        </main>
-
-        <Footer setActiveSection={setActiveSection} />
-
-
-        {/* Auth Modals */}
-        {showLogin && (
-          <Login
-            onSwitchToSignup={handleSwitchToSignup}
-            onClose={handleCloseAuth}
-            onLogin={() => setActiveSection('home')}
-          />
-        )}
-        {showSignup && (
-          <Signup
-            onSwitchToLogin={handleSwitchToLogin}
-            onClose={handleCloseAuth}
-            onSignup={() => setActiveSection('home')}
-          />
-        )}
-      </div>
-    </TranslationProvider>
+          {showSignup && (
+            <Signup
+              onSwitchToLogin={handleSwitchToLogin}
+              onClose={handleCloseAuth}
+              onSignup={() => setActiveSection('home')}
+            />
+          )}
+        </div>
+      </TranslationProvider>
+    </TTSProvider>
   );
 };
 

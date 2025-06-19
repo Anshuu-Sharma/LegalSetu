@@ -1,66 +1,56 @@
-//merged
-// server/app.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
-
-// Import configurations
 const { initializeDatabase } = require('./src/config/database');
 const { testS3Connection } = require('./src/config/s3');
 
-// Import route modules
 const analyzeRoutes = require('./analyze');
 const translationRoutes = require('./index');
-const formsRoutes = require('./src/routes/forms'); // Add this line
+const formsRoutes = require('./src/routes/forms');
+const ttsRoute = require('./src/routes/tts');
 
 const app = express();
 
-// CORS configuration
-const allowedOrigins = [
-  /^http:\/\/localhost:\d+$/,
-  process.env.PRODUCTION_URL
-].filter(Boolean);
+// ✅ Body parsers FIRST
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// app.use(cors({
-//   origin: function (origin, callback) {
-//     if (!origin) return callback(null, true);
-//     if (allowedOrigins.some(rule =>
-//       typeof rule === 'string' ? rule === origin : rule.test(origin)
-//     )) {
-//       return callback(null, true);
-//     }
-//     return callback(new Error(`Origin '${origin}' not allowed by CORS`), false);
-//   },
-//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//   allowedHeaders: ['Content-Type', 'Authorization']
-// }));
+// ✅ CORS
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// ✅ Serve static audio files
+app.use('/uploads/audio', express.static(path.join(__dirname, 'uploads/audio')));
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// ✅ TTS Route
+app.use(ttsRoute);
 
-// Create upload directories for local storage fallback
-const uploadDirs = ['uploads', 'uploads/users', 'uploads/forms', 'uploads/filled', 'uploads/audio'];
+// ✅ Other routes
+app.use('/api', analyzeRoutes);
+app.use('/api', translationRoutes);
+app.use('/api/forms', formsRoutes);
+
+// ✅ Ensure upload directories exist
+const uploadDirs = [
+  'uploads',
+  'uploads/users',
+  'uploads/forms',
+  'uploads/filled',
+  'uploads/audio'
+];
 uploadDirs.forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 });
 
-// API Routes
-app.use('/api', analyzeRoutes);
-app.use('/api', translationRoutes);
-app.use('/api/forms', formsRoutes); // Add this line
-
-// Health check
+// ✅ Health check
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -74,10 +64,10 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Error handling middleware
+// ✅ Error handler
 app.use((error, req, res, next) => {
   console.error('Unhandled error:', error);
-  
+
   if (error.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json({
       success: false,
@@ -99,7 +89,7 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Initialize services and start server
+// ✅ Start server
 const PORT = process.env.PORT || 4000;
 
 Promise.all([
