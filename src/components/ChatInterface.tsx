@@ -378,7 +378,7 @@ return (
                     line.trim().startsWith('-') ? 'pl-4 list-disc list-inside' : ''
                   }`}
                 >
-                  {line}
+                  <LocalizedText text={line} />
                 </p>
               ))}
 
