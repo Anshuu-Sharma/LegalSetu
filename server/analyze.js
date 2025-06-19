@@ -324,9 +324,9 @@ router.post('/assist', async (req, res) => {
     let reply = await callGeminiChat(query, history);
 
     // Translate reply if needed
-    if (language !== 'en') {
-      reply = (await translate.translate(reply, language))[0];
-    }
+    // if (language !== 'en') {
+    //   reply = (await translate.translate(reply, language))[0];
+    // }
 
     res.json({ reply });
   } catch (error) {
@@ -396,7 +396,14 @@ Full document text (only search if needed):
     let reply = response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
 
     // Translate reply if needed
-
+    if (language !== 'en') {
+      try {
+        reply = (await translate.translate(reply, language))[0];
+      } catch (translateErr) {
+        console.error('Translation error:', translateErr);
+        // Proceed without translation if error occurs
+      }
+    }
 
     res.json({ reply, pages: matchedPages });
   } catch (err) {

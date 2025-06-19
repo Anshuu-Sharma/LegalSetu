@@ -6,6 +6,7 @@ import FileUploader from './Document/FileUploader.tsx';
 import DocumentList from './Document/DocumentList.tsx';
 import AnalysisModal from './Document/AnalysisModal.tsx';
 import ChatHeader from './ChatHeader.tsx';
+import LocalizedText from './LocalizedText.tsx';
 
 interface AnalysisResult {
   summary: string;
@@ -101,23 +102,23 @@ const DocumentUpload: React.FC = () => {
         if (!response.ok) throw new Error('Analysis request failed');
 
         const result = await response.json();
-        
+
         setDocuments(prev =>
           prev.map(doc =>
             doc.id === id
               ? {
-                  ...doc,
-                  analysisId: result.analysisId, // Store backend analysisId
-                  status: 'completed',
-                  analysis: result.analysis ? {
-                    summary: result.analysis.summary || '',
-                    clauses: result.analysis.clauses || [],
-                    risks: result.analysis.risks || [],
-                    suggestions: result.analysis.suggestions || [],
-                    fullText: result.analysis.fullText || '',
-                    _meta: result.analysis._meta || { pages: 0, pageMetadata: {} }
-                  } : undefined
-                }
+                ...doc,
+                analysisId: result.analysisId, // Store backend analysisId
+                status: 'completed',
+                analysis: result.analysis ? {
+                  summary: result.analysis.summary || '',
+                  clauses: result.analysis.clauses || [],
+                  risks: result.analysis.risks || [],
+                  suggestions: result.analysis.suggestions || [],
+                  fullText: result.analysis.fullText || '',
+                  _meta: result.analysis._meta || { pages: 0, pageMetadata: {} }
+                } : undefined
+              }
               : doc
           )
         );
@@ -162,106 +163,110 @@ const DocumentUpload: React.FC = () => {
 
 
   // Restore documents and analysisView on first load
-useEffect(() => {
-  const savedDocs = sessionStorage.getItem('uploadedDocuments');
-  const savedView = sessionStorage.getItem('analysisViewId');
+  useEffect(() => {
+    const savedDocs = sessionStorage.getItem('uploadedDocuments');
+    const savedView = sessionStorage.getItem('analysisViewId');
 
-  if (savedDocs) {
-    try {
-      const parsed: UploadedDocument[] = JSON.parse(savedDocs);
-      if (Array.isArray(parsed)) {
-        setDocuments(parsed);
-        console.log('✅ Restored documents from session:', parsed);
+    if (savedDocs) {
+      try {
+        const parsed: UploadedDocument[] = JSON.parse(savedDocs);
+        if (Array.isArray(parsed)) {
+          setDocuments(parsed);
+          console.log('✅ Restored documents from session:', parsed);
+        }
+      } catch (error) {
+        console.error('❌ Failed to parse saved documents:', error);
       }
-    } catch (error) {
-      console.error('❌ Failed to parse saved documents:', error);
     }
-  }
 
-  if (savedView) {
-    setAnalysisView(savedView);
-  }
-}, []);
+    if (savedView) {
+      setAnalysisView(savedView);
+    }
+  }, []);
 
-// Save documents to sessionStorage when they change
-useEffect(() => {
-  const timeout = setTimeout(() => {
-    sessionStorage.setItem('uploadedDocuments', JSON.stringify(documents));
-    console.log('✅ Saved documents to session:', documents);
-  }, 400);
+  // Save documents to sessionStorage when they change
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      sessionStorage.setItem('uploadedDocuments', JSON.stringify(documents));
+      console.log('✅ Saved documents to session:', documents);
+    }, 400);
 
-  return () => clearTimeout(timeout);
-}, [documents]);
+    return () => clearTimeout(timeout);
+  }, [documents]);
 
-// Save selected analysisView when it changes
-useEffect(() => {
-  if (analysisView) {
-    sessionStorage.setItem('analysisViewId', analysisView);
-    console.log('✅ Saved analysisView to session:', analysisView);
-  } else {
-    sessionStorage.removeItem('analysisViewId');
-  }
-}, [analysisView]);
+  // Save selected analysisView when it changes
+  useEffect(() => {
+    if (analysisView) {
+      sessionStorage.setItem('analysisViewId', analysisView);
+      console.log('✅ Saved analysisView to session:', analysisView);
+    } else {
+      sessionStorage.removeItem('analysisViewId');
+    }
+  }, [analysisView]);
 
 
-  
 
-return (
-  <div className="min-h-screen bg-gradient-to-br from-[#e0f2ff] via-white to-[#f3e8ff] py-12 px-4">
-    <motion.div
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#e0f2ff] via-white to-[#f3e8ff] py-12 px-4">
+      <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8"
       >
-    <ChatHeader
-      title={localizedText.headerTitle}
-      subtitle={localizedText.headerSubtitle}
-    />
+        <ChatHeader
+          title={localizedText.headerTitle}
+          subtitle={localizedText.headerSubtitle}
+        />
 
-    {/* File Uploader */}
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.3, duration: 0.5 }}
-      className="mb-6"
-    >
-      <FileUploader
-        onFiles={handleFiles}
-        dragActive={dragActive}
-        setDragActive={setDragActive}
-        uploadLabel={localizedText.uploadLabel}
-        chooseFileLabel={localizedText.chooseFileLabel}
-        fileTypesLabel={localizedText.fileTypesLabel}
-      />
-    </motion.div>
+        {/* File Uploader */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="mb-6"
+        >
+          <FileUploader
+            onFiles={handleFiles}
+            dragActive={dragActive}
+            setDragActive={setDragActive}
+            uploadLabel={localizedText.uploadLabel}
+            chooseFileLabel={localizedText.chooseFileLabel}
+            fileTypesLabel={localizedText.fileTypesLabel}
+          />
+          <p className="text-gray-500 text-sm mt-2 mb-0 text-center">
+            <LocalizedText text='(More Languages coming soon.)'/>
+          </p>
 
-    {/* Document List */}
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.5, duration: 0.5 }}
-    >
-      <DocumentList
-        documents={documents}
-        onDelete={(id) => setDocuments(prev => prev.filter(d => d.id !== id))}
-        onViewAnalysis={(analysisId) => setAnalysisView(analysisId)}
-        uploadedDocsLabel={localizedText.uploadedDocsLabel}
-        noDocsLabel={localizedText.noDocsLabel}
-      />
-    </motion.div>
+        </motion.div>
 
-    {/* Analysis Modal */}
-    {analysisView && (
-      <AnalysisModal
-        analysis={documents.find(d => d.analysisId === analysisView)?.analysis}
-        onClose={() => setAnalysisView(null)}
-      />
-    )}
-  </motion.div>
-  </div>
-  
-);
+        {/* Document List */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.5 }}
+        >
+          <DocumentList
+            documents={documents}
+            onDelete={(id) => setDocuments(prev => prev.filter(d => d.id !== id))}
+            onViewAnalysis={(analysisId) => setAnalysisView(analysisId)}
+            uploadedDocsLabel={localizedText.uploadedDocsLabel}
+            noDocsLabel={localizedText.noDocsLabel}
+          />
+        </motion.div>
+
+        {/* Analysis Modal */}
+        {analysisView && (
+          <AnalysisModal
+            analysis={documents.find(d => d.analysisId === analysisView)?.analysis}
+            onClose={() => setAnalysisView(null)}
+          />
+        )}
+      </motion.div>
+    </div>
+
+  );
 };
 
 export default DocumentUpload;
