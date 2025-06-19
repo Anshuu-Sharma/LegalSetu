@@ -189,31 +189,31 @@ useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, typingText]);
 
-  // useEffect(() => {
-  //   if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
-  //   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  //   const recognition: SpeechRecognition = new SpeechRecognition();
-  //   recognition.lang = language;
-  //   recognition.interimResults = false;
-  //   recognition.maxAlternatives = 1;
+  useEffect(() => {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition: SpeechRecognition = new SpeechRecognition();
+    recognition.lang = language;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
 
-  //   recognition.onstart = () => setListening(true);
-  //   recognition.onend = () => setListening(false);
-  //   recognition.onerror = () => setListening(false);
-  //   recognition.onresult = (event: SpeechRecognitionEvent) => {
-  //     const transcript = event.results[0][0].transcript;
-  //     setInput(transcript);
-  //     setTimeout(() => handleSend(transcript), 1);
-  //   };
+    recognition.onstart = () => setListening(true);
+    recognition.onend = () => setListening(false);
+    recognition.onerror = () => setListening(false);
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+      setTimeout(() => handleSend(transcript), 1);
+    };
 
-  //   recognitionRef.current = recognition;
-  // }, [language]);
+    recognitionRef.current = recognition;
+  }, [language]);
 
-  // const speakText = (text: string) => {
-  //   const utterance = new SpeechSynthesisUtterance(text);
-  //   utterance.lang = language;
-  //   speechSynthesis.speak(utterance);
-  // };
+  const speakText = (text: string) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = language;
+    speechSynthesis.speak(utterance);
+  };
 
   const handleSend = async (overrideInput?: string) => {
     const query = (overrideInput ?? input).trim();
