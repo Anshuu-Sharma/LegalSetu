@@ -4,38 +4,40 @@ import { useTTS } from '../contexts/ttsContext';
 interface VoicePlayerProps {
   text: string;
   language?: string;
-  index?: number; // Optional if tracking per message
+  index?: number;
 }
 
 const API_BASE = import.meta.env.DEV
-  ? 'http://localhost:4000' // Local backend during development
+  ? 'http://localhost:4000'
   : import.meta.env.VITE_API_URL || '';
 
-
-const VoicePlayer: React.FC<VoicePlayerProps> = ({ text, language = 'en', index }) => {
+const VoicePlayer: React.FC<VoicePlayerProps> = ({ text, language = 'en' }) => {
   const { ttsEnabled } = useTTS();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingAudio, setIsFetchingAudio] = useState(false); // separate loading flag
 
   useEffect(() => {
     return () => {
-      // Clean up when unmounted
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
+        audioRef.current = null;
       }
     };
   }, []);
 
   const handlePlay = async () => {
-    if (!ttsEnabled || !text?.trim()) return;
-    setIsLoading(true);
+    if (!ttsEnabled || !text?.trim() || isFetchingAudio) return;
+
+    setIsFetchingAudio(true);
+
     try {
-      // Stop previous
+      // Stop any existing playback
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
+        audioRef.current = null;
       }
 
       const res = await fetch(`${API_BASE}/api/tts`, {
@@ -45,7 +47,6 @@ const VoicePlayer: React.FC<VoicePlayerProps> = ({ text, language = 'en', index 
       });
 
       const data = await res.json();
-
       if (!data.audioUrl) throw new Error('TTS audio failed');
 
       const audioUrl = `${API_BASE}${data.audioUrl}`;
@@ -54,54 +55,57 @@ const VoicePlayer: React.FC<VoicePlayerProps> = ({ text, language = 'en', index 
 
       audio.play().then(() => {
         setIsPlaying(true);
-        setIsLoading(false); // Done loading
+        setIsFetchingAudio(false);
       }).catch((err) => {
         console.error('🔈 Playback error:', err);
         setIsPlaying(false);
-        setIsLoading(false); // Done loading
+        setIsFetchingAudio(false);
       });
 
-      // Clean up object URL after playback
       audio.onended = () => {
         setIsPlaying(false);
-        setIsLoading(false);
-        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
       };
+
       audio.onerror = (e) => {
         console.error('🎵 Audio failed to load/play:', e);
         setIsPlaying(false);
-        setIsLoading(false);
-        URL.revokeObjectURL(audioUrl);
+        setIsFetchingAudio(false);
+        audioRef.current = null;
       };
     } catch (err) {
       console.error('❌ TTS Error:', err);
       setIsPlaying(false);
-      setIsLoading(false);
+      setIsFetchingAudio(false);
     }
   };
-
 
   const handleStop = () => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
+      audioRef.current = null;
       setIsPlaying(false);
     }
   };
+
+  const isButtonDisabled = isFetchingAudio && !isPlaying;
 
   return (
     <button
       onClick={isPlaying ? handleStop : handlePlay}
       title={isPlaying ? 'Stop voice playback' : 'Play voice'}
-      disabled={isLoading || isPlaying} // Disable during loading or playback
-      className={`p-1 rounded-full transition-colors duration-200 ${isPlaying
+      disabled={isButtonDisabled}
+      className={`p-1 rounded-full transition-colors duration-200 ${
+        isPlaying
           ? 'text-blue-600 hover:text-blue-700'
-          : 'text-gray-400 hover:text-gray-600'
-        }`}
+          : isButtonDisabled
+            ? 'text-gray-300 cursor-not-allowed'
+            : 'text-gray-400 hover:text-gray-600'
+      }`}
     >
-      {isLoading ? '⏳' : isPlaying ? '⏹️' : '🔊'}
+      {isFetchingAudio && !isPlaying ? '⏳' : isPlaying ? '⏹️' : '🔊'}
     </button>
-
   );
 };
 
