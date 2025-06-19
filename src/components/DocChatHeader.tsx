@@ -20,7 +20,6 @@ const DocChatHeader: React.FC = () => {
     { code: 'or', name: 'ଓଡ଼ିଆ' },
     { code: 'pa', name: 'ਪੰਜਾਬੀ' },
     { code: 'as', name: 'অসমীয়া' },
-    { code: 'ne', name: 'नेपाली' },
     { code: 'ur', name: 'اُردُو' }
   ];
 

@@ -35,7 +35,6 @@ const languages = [
   { code: 'or', name: 'ଓଡ଼ିଆ' },
   { code: 'pa', name: 'ਪੰਜਾਬੀ' },
   { code: 'as', name: 'অসমীয়া' },
-  { code: 'ne', name: 'नेपाली' },
   { code: 'ur', name: 'اُردُو' }
 ];
 
@@ -129,7 +128,6 @@ const [placeholders, setPlaceholders] = useState<Record<string, string>>({});
           'or': 'or-IN',
           'pa': 'pa-IN',
           'as': 'as-IN',
-          'ne': 'ne-IN',
           'ur': 'ur-IN',
         };
   
@@ -328,7 +326,7 @@ return (
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
-              accept=".pdf,.jpg,.jpeg,.png"
+              accept=".pdf"
               className="hidden"
             />
             <Upload className="h-16 w-16 text-blue-600 mx-auto mb-4" />
@@ -340,8 +338,6 @@ return (
             </p>
             <div className="flex justify-center space-x-2 text-sm text-gray-600">
               <span className="px-2.5 py-1 bg-gray-100 rounded-md">PDF</span>
-              <span className="px-2.5 py-1 bg-gray-100 rounded-md">JPG</span>
-              <span className="px-2.5 py-1 bg-gray-100 rounded-md">PNG</span>
             </div>
           </motion.div>
 
