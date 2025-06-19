@@ -324,9 +324,9 @@ router.post('/assist', async (req, res) => {
     let reply = await callGeminiChat(query, history);
 
     // Translate reply if needed
-    // if (language !== 'en') {
-    //   reply = (await translate.translate(reply, language))[0];
-    // }
+    if (language !== 'en') {
+      reply = (await translate.translate(reply, language))[0];
+    }
 
     res.json({ reply });
   } catch (error) {
