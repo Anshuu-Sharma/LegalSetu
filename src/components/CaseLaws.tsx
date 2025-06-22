@@ -51,7 +51,7 @@ const CaseLaws: React.FC = () => {
   }, [t, language]);
   
   useEffect(() => {
-    fetch('/api/constitution')
+    fetch('/constitution_of_india.json')
       .then(res => res.json())
       .then(data => {
         setArticles(data.articles || data);
