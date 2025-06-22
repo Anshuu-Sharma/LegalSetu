@@ -56,8 +56,13 @@ const CaseLaws: React.FC = () => {
       .then(data => {
         setArticles(data.articles || data);
         setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to load constitution data:', err);
+        setLoading(false);
       });
   }, []);
+  
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
