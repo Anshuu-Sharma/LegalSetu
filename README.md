@@ -119,9 +119,9 @@ _(More coming soon)_
 |--------------|-----------|
 | 💻 Frontend  | Vite + React, Tailwind CSS, Framer Motion |
 | 🔐 Auth      | Firebase Authentication |
-| ☁️ Storage   | AWS S3 |
-| 🧠 AI Models | OpenAI + Custom NLP (India-tuned) |
-| 🗣️ Voice     | Web Speech API (Text ↔ Speech, multilingual) |
+| ☁️ Storage   | AWS S3 + MySQL Database |
+| 🧠 AI Models | Gemini + Google Translate (India-tuned) |
+| 🗣️ Voice     | Google Cloud Text to Speech  (Text ↔ Speech, multilingual) |
 | 📦 OCR       | AI-based image & PDF parsing |
 
 ---
