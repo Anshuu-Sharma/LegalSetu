@@ -57,7 +57,7 @@ const VoicePlayer: React.FC<VoicePlayerProps> = ({ text, language = 'en' }) => {
         setIsPlaying(true);
         setIsFetchingAudio(false);
       }).catch((err) => {
-        console.error('🔈 Playback error:', err);
+        // console.error('🔈 Playback error:', err);
         setIsPlaying(false);
         setIsFetchingAudio(false);
       });
@@ -68,13 +68,13 @@ const VoicePlayer: React.FC<VoicePlayerProps> = ({ text, language = 'en' }) => {
       };
 
       audio.onerror = (e) => {
-        console.error('🎵 Audio failed to load/play:', e);
+        // console.error('🎵 Audio failed to load/play:', e);
         setIsPlaying(false);
         setIsFetchingAudio(false);
         audioRef.current = null;
       };
     } catch (err) {
-      console.error('❌ TTS Error:', err);
+      // console.error('❌ TTS Error:', err);
       setIsPlaying(false);
       setIsFetchingAudio(false);
     }

@@ -25,17 +25,17 @@ interface FormField {
 const languages = [
   { code: 'en', name: 'English' },
   { code: 'hi', name: 'हिन्दी' },
-  { code: 'bn', name: 'বাংলা' },
-  { code: 'te', name: 'తెలుగు' },
-  { code: 'ta', name: 'தமிழ்' },
+  // { code: 'bn', name: 'বাংলা' },
+  // { code: 'te', name: 'తెలుగు' },
+  // { code: 'ta', name: 'தமிழ்' },
   { code: 'mr', name: 'मराठी' },
-  { code: 'gu', name: 'ગુજરાતી' },
-  { code: 'kn', name: 'ಕನ್ನಡ' },
-  { code: 'ml', name: 'മലയാളം' },
-  { code: 'or', name: 'ଓଡ଼ିଆ' },
-  { code: 'pa', name: 'ਪੰਜਾਬੀ' },
-  { code: 'as', name: 'অসমীয়া' },
-  { code: 'ur', name: 'اُردُو' }
+  // { code: 'gu', name: 'ગુજરાતી' },
+  // { code: 'kn', name: 'ಕನ್ನಡ' },
+  // { code: 'ml', name: 'മലയാളം' },
+  // { code: 'or', name: 'ଓଡ଼ିଆ' },
+  // { code: 'pa', name: 'ਪੰਜਾਬੀ' },
+  // { code: 'as', name: 'অসমীয়া' },
+  // { code: 'ur', name: 'اُردُو' }
 ];
 
 
@@ -101,7 +101,7 @@ const FormFilling: React.FC = () => {
         alert('Failed to process form: ' + data.error);
       }
     } catch (error) {
-      console.error('Form upload error:', error);
+      // console.error('Form upload error:', error);
       alert('Failed to upload form: ' + (error as Error).message);
     } finally {
       setIsUploading(false);
@@ -137,7 +137,7 @@ const FormFilling: React.FC = () => {
         window.speechSynthesis.speak(utterance);
       }
     } catch (error) {
-      console.error('Speech error:', error);
+      // console.error('Speech error:', error);
     }
   };
 
@@ -158,13 +158,13 @@ const FormFilling: React.FC = () => {
       const languageMap: Record<string, string> = {
         'en': 'en-IN',
         'hi': 'hi-IN',
-        // 'bn': 'bn-IN',
-        // 'te': 'te-IN',
-        // 'ta': 'ta-IN',
-        // 'mr': 'mr-IN',
-        // 'gu': 'gu-IN',
-        // 'kn': 'kn-IN',
-        // 'ml': 'ml-IN'
+        'bn': 'bn-IN',
+        'te': 'te-IN',
+        'ta': 'ta-IN',
+        'mr': 'mr-IN',
+        'gu': 'gu-IN',
+        'kn': 'kn-IN',
+        'ml': 'ml-IN'
       };
 
       recognition.lang = languageMap[language] || 'en-IN';
@@ -193,7 +193,7 @@ const FormFilling: React.FC = () => {
 
       recognition.start();
     } catch (error) {
-      console.error('Recording error:', error);
+      // console.error('Recording error:', error);
       setIsRecording(false);
       setActiveFieldId(null);
     }
@@ -234,7 +234,7 @@ const FormFilling: React.FC = () => {
         alert('Failed to fill form: ' + data.error);
       }
     } catch (error) {
-      console.error('Form filling error:', error);
+      // console.error('Form filling error:', error);
       alert('Failed to fill form');
     } finally {
       setIsProcessing(false);

@@ -142,14 +142,14 @@ const loadChatMessages = () => {
   try {
     const parsed = saved ? JSON.parse(saved) : [];
     if (Array.isArray(parsed)) {
-      console.log('✅ Loaded chat messages from sessionStorage:', key);
+      // console.log('✅ Loaded chat messages from sessionStorage:', key);
       setMessages(parsed);
     } else {
       console.warn('⚠️ Stored chat is not an array, resetting...');
       setMessages([]);
     }
   } catch (err) {
-    console.error('❌ Failed to parse chat messages:', err);
+    // console.error('❌ Failed to parse chat messages:', err);
     setMessages([]);
   }
 
@@ -177,9 +177,9 @@ useEffect(() => {
   try {
     const data = JSON.stringify(messages);
     sessionStorage.setItem(key, data);
-    console.log('✅ Chat saved:', key);
+    // console.log('✅ Chat saved:', key);
   } catch (err) {
-    console.error('❌ Failed to save chat messages:', err);
+    // console.error('❌ Failed to save chat messages:', err);
   }
 }, [messages, docHash]);
 
@@ -252,7 +252,7 @@ useEffect(() => {
         }
       }, 80);
     } catch (err) {
-      console.error('Chat failed', err);
+      // console.error('Chat failed', err);
       setMessages((prev) => [
         ...prev,
         { role: 'bot', text: '⚠️ Failed to get response. Try again later.', timestamp: new Date().toLocaleTimeString() },

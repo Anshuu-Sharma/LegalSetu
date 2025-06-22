@@ -192,7 +192,7 @@ useEffect(() => {
       const parsed: Message[] = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
         setMessages(parsed);
-        console.log('✅ Restored messages from session:', parsed);
+        // console.log('✅ Restored messages from session:', parsed);
       }
     } catch (error) {
       console.error('❌ Failed to parse saved chat:', error);
@@ -204,7 +204,7 @@ useEffect(() => {
 useEffect(() => {
   const timeout = setTimeout(() => {
     sessionStorage.setItem('chatMessages', JSON.stringify(messages));
-    console.log('✅ Final save to session:', messages);
+    // console.log('✅ Final save to session:', messages);
   }, 500); // Save only after 500ms of inactivity
 
   return () => clearTimeout(timeout); // Prevent multiple rapid saves

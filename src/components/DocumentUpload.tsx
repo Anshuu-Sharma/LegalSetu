@@ -69,7 +69,7 @@ const DocumentUpload: React.FC = () => {
           noDocsLabel: translations[6]
         });
       } catch (error) {
-        console.error('Translation error:', error);
+        // console.error('Translation error:', error);
       }
     };
     translateUI();
@@ -124,7 +124,7 @@ const DocumentUpload: React.FC = () => {
         );
       }
     } catch (error) {
-      console.error('File processing error:', error);
+      // console.error('File processing error:', error);
       setDocuments(prev =>
         prev.map(doc =>
           doc.status === 'analyzing'
@@ -150,7 +150,7 @@ const DocumentUpload: React.FC = () => {
         )
       );
     } catch (error) {
-      console.error('Error fetching analysis:', error);
+      // console.error('Error fetching analysis:', error);
     }
   };
 
@@ -172,10 +172,10 @@ const DocumentUpload: React.FC = () => {
         const parsed: UploadedDocument[] = JSON.parse(savedDocs);
         if (Array.isArray(parsed)) {
           setDocuments(parsed);
-          console.log('✅ Restored documents from session:', parsed);
+          // console.log('✅ Restored documents from session:', parsed);
         }
       } catch (error) {
-        console.error('❌ Failed to parse saved documents:', error);
+        // console.error('❌ Failed to parse saved documents:', error);
       }
     }
 
@@ -188,7 +188,7 @@ const DocumentUpload: React.FC = () => {
   useEffect(() => {
     const timeout = setTimeout(() => {
       sessionStorage.setItem('uploadedDocuments', JSON.stringify(documents));
-      console.log('✅ Saved documents to session:', documents);
+      // console.log('✅ Saved documents to session:', documents);
     }, 400);
 
     return () => clearTimeout(timeout);
@@ -198,7 +198,7 @@ const DocumentUpload: React.FC = () => {
   useEffect(() => {
     if (analysisView) {
       sessionStorage.setItem('analysisViewId', analysisView);
-      console.log('✅ Saved analysisView to session:', analysisView);
+      // console.log('✅ Saved analysisView to session:', analysisView);
     } else {
       sessionStorage.removeItem('analysisViewId');
     }
