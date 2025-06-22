@@ -51,13 +51,18 @@ const CaseLaws: React.FC = () => {
   }, [t, language]);
   
   useEffect(() => {
-    fetch('/constitution_of_india.json')
+    fetch('/api/constitution')
       .then(res => res.json())
       .then(data => {
         setArticles(data.articles || data);
         setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to load constitution data:', err);
+        setLoading(false);
       });
   }, []);
+  
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
