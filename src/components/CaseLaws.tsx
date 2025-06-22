@@ -5,6 +5,7 @@ import { Search, Sparkles, FileText, Languages, ChevronDown, ChevronUp } from 'l
 import { useTranslation } from '../contexts/TranslationContext'; 
 import LocalizedText from './LocalizedText';
 import ChatHeader from './ChatHeader';
+import VoicePlayer from './VoicePlayer';
 
 // Language options
 const languages = [
@@ -167,104 +168,124 @@ useEffect(() => {
 
       {/* Results */}
       <div className="w-full flex justify-center mb-8">
-        <style>
-          {`
-            @media (max-width: 920px) {
-              .custom-article-grid {
-                grid-template-columns: 1fr !important;
-              }
-            }
-            .search-highlight {
-              background-color: #fff59d;
-              color: #222;
-              font-weight: bold;
-              border-radius: 3px;
-              padding: 0 2px;
-            }
-          `}
-        </style>
-        {loading ? (
-          <div className="flex justify-center items-center py-8">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-              className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full"
+  <style>
+    {`
+      @media (max-width: 920px) {
+        .custom-article-grid {
+          grid-template-columns: 1fr !important;
+        }
+      }
+      .search-highlight {
+        background-color: #fff59d;
+        color: #222;
+        font-weight: bold;
+        border-radius: 3px;
+        padding: 0 2px;
+      }
+    `}
+  </style>
+  {loading ? (
+    <div className="flex justify-center items-center py-8">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+        className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full"
+      />
+    </div>
+  ) : showNoResults ? (
+    <div className="w-full max-w-xl flex flex-col items-center bg-blue-50 border border-blue-200 rounded-2xl p-6 shadow text-center">
+      <div className="flex items-center justify-center mb-3">
+        <Sparkles className="w-6 h-6 text-blue-400 mr-2" />
+        <span className="font-semibold text-blue-700 text-lg">
+          <LocalizedText text="No articles found for your query." />
+        </span>
+      </div>
+      <div className="text-gray-600">
+        <LocalizedText text="Try a different keyword or article number." />
+      </div>
+    </div>
+  ) : showArticles ? (
+    expandedCard ? (
+      <div className="w-full max-w-2xl mx-auto">
+        <div
+          className="w-full bg-white border border-gray-100 rounded-xl p-6 shadow-xl flex flex-col text-base cursor-pointer transition hover:shadow-2xl"
+          onClick={() => setExpandedArticle(null)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold text-blue-700">
+                <LocalizedText text={`Article ${expandedCard.article}: `} />
+                <Highlighter
+                  highlightClassName="search-highlight"
+                  searchWords={searchWords}
+                  autoEscape={true}
+                  textToHighlight={translatedExpandedTitle}
+                />
+              </h2>
+              <div onClick={(e) => e.stopPropagation()}>
+                <VoicePlayer
+                  text={`Article ${expandedCard.article}. ${translatedExpandedTitle}. ${translatedExpandedDescription}`}
+                  language={language}
+                />
+              </div>
+            </div>
+            <ChevronUp className="w-6 h-6 text-gray-400" />
+          </div>
+          <div className="mt-6 text-gray-700">
+            <Highlighter
+              highlightClassName="search-highlight"
+              searchWords={searchWords}
+              autoEscape={true}
+              textToHighlight={translatedExpandedDescription}
             />
           </div>
-        ) : showNoResults ? (
-          <div className="w-full max-w-xl flex flex-col items-center bg-blue-50 border border-blue-200 rounded-2xl p-6 shadow text-center">
-            <div className="flex items-center justify-center mb-3">
-              <Sparkles className="w-6 h-6 text-blue-400 mr-2" />
-              <span className="font-semibold text-blue-700 text-lg"><LocalizedText text='No articles found for your query.'/></span>
-            </div>
-            <div className="text-gray-600"><LocalizedText text='Try a different keyword or article number.'/></div>
+          <div className="mt-6 text-right">
+            <span className="text-blue-500 text-sm italic">
+              <LocalizedText text="(Click anywhere to go back)" />
+            </span>
           </div>
-        ) : showArticles ? (
-          expandedCard ? (
-            <div className="w-full max-w-2xl mx-auto">
-              <div
-                className="w-full bg-white border border-gray-100 rounded-xl p-6 shadow-xl flex flex-col text-base cursor-pointer transition hover:shadow-2xl"
-                onClick={() => setExpandedArticle(null)}
-              >
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-blue-700">
-                    <LocalizedText text={`Article ${expandedCard.article}:${" "}`}/>
-                    <Highlighter
-                      highlightClassName="search-highlight"
-                      searchWords={searchWords} 
-                      autoEscape={true}
-                      textToHighlight={translatedExpandedTitle}
-                    />
-                  </h2>
-                  <ChevronUp className="w-6 h-6 text-gray-400" />
-                </div>
-                <div className="mt-6 text-gray-700">
-                  <LocalizedText text={`${expandedCard.description}`}/>
+        </div>
+      </div>
+    ) : (
+      <div
+        className="custom-article-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 justify-center items-start"
+        style={{ width: "100%", maxWidth: "1400px" }}
+      >
+        {results.map((article) => (
+          <div
+            key={article.article}
+            className="w-full bg-white border border-gray-100 rounded-xl p-4 shadow flex flex-col text-sm cursor-pointer transition hover:shadow-xl"
+            onClick={() => handleExpand(article.article)}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-blue-700">
+                  <LocalizedText text={`Article ${article.article}: `} />
                   <Highlighter
                     highlightClassName="search-highlight"
                     searchWords={searchWords}
                     autoEscape={true}
-                    textToHighlight={translatedExpandedDescription}
+                    textToHighlight={translatedTitles[article.article] || article.title}
+                  />
+                </h2>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <VoicePlayer
+                    text={`Article ${article.article}. ${
+                      translatedTitles[article.article] || article.title
+                    }`}
+                    language={language}
                   />
                 </div>
-                <div className="mt-6 text-right">
-                  <span className="text-blue-500 text-sm italic"><LocalizedText text='(Click anywhere to go back)'/></span>
-                </div>
               </div>
+              <ChevronDown className="w-4 h-4 text-gray-400" />
             </div>
-          ) : (
-            <div
-              className="custom-article-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 justify-center items-start"
-              style={{ width: '100%', maxWidth: '1400px' }}
-            >
-              {results.map(article => 
-                
-               (
-                <div
-                  key={article.article}
-                  className="w-full bg-white border border-gray-100 rounded-xl p-4 shadow flex flex-col text-sm cursor-pointer transition hover:shadow-xl"
-                  onClick={() => handleExpand(article.article)}
-                >
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-base font-bold text-blue-700">
-                      <LocalizedText text={`Article ${article.article}:${" "}`}/>
-                      <Highlighter
-                        highlightClassName="search-highlight"
-                        searchWords={searchWords}
-                        autoEscape={true}
-                        textToHighlight={translatedTitles[article.article] || article.title}
-                      />
-                    </h2>
-                    <span>
-                      <ChevronDown className="w-4 h-4 text-gray-400" />
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
-        ) : null}
+          </div>
+        ))}
       </div>
+    )
+  ) : null}
+</div>
+
       </div>
   );
 };
