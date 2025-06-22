@@ -17,6 +17,7 @@ import EasterEgg from './components/EasterEgg.tsx';
 import { TTSProvider } from './contexts/ttsContext';
 
 
+
 const App: React.FC = () => {
   // Firebase authentication state
   const [user, setUser] = useState<{
