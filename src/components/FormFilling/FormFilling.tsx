@@ -344,7 +344,7 @@ const FormFilling: React.FC = () => {
 
               </div>
               <p className="text-gray-500 text-sm mt-2 mb-0 text-center">
-                <LocalizedText text="(More languages coming soon)" />
+                {/* <LocalizedText text="(More languages coming soon)" /> */}
               </p>
             </motion.div>
 
