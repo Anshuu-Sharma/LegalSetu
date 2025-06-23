@@ -42,7 +42,7 @@ const DocumentUpload: React.FC = () => {
     headerSubtitle: 'Upload documents and get AI-powered insights.',
     uploadLabel: 'Upload Document',
     chooseFileLabel: 'Choose File',
-    fileTypesLabel: 'PDF (Max 10MB)',
+    fileTypesLabel: 'PDF, JPG, PNG, DOCX (Max 10MB)',
     uploadedDocsLabel: 'Uploaded Documents',
     noDocsLabel: 'No documents uploaded'
   });
@@ -55,7 +55,7 @@ const DocumentUpload: React.FC = () => {
           t('Upload documents and get AI-powered insights.'),
           t('Upload Document'),
           t('Choose File'),
-          t('PDF (Max 10MB)'),
+          t('PDF, JPG, PNG, DOCX (Max 10MB)'),
           t('Uploaded Documents'),
           t('No documents uploaded')
         ]);
