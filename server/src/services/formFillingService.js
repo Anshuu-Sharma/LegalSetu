@@ -7,6 +7,50 @@ const { s3 } = require('../config/s3');
 const { v4: uuidv4 } = require('uuid');
 
 
+//More languages:
+const FONT_MAP = [
+  { name: 'NotoSansDevanagari', path: 'NotoSansDevanagari-Regular.ttf', test: /[\u0900-\u097F]/ }, // Hindi
+  { name: 'NotoSansBengali', path: 'NotoSansBengali-Regular.ttf', test: /[\u0980-\u09FF]/ }, // Bengali
+  { name: 'NotoSansTamil', path: 'NotoSansTamil-Regular.ttf', test: /[\u0B80-\u0BFF]/ }, // Tamil
+  { name: 'NotoSansTelugu', path: 'NotoSansTelugu-Regular.ttf', test: /[\u0C00-\u0C7F]/ }, // Telugu
+  { name: 'NotoSansGujarati', path: 'NotoSansGujarati-Regular.ttf', test: /[\u0A80-\u0AFF]/ }, // Gujarati
+  { name: 'NotoSansGurmukhi', path: 'NotoSansGurmukhi-Regular.ttf', test: /[\u0A00-\u0A7F]/ }, // Punjabi
+  { name: 'NotoSansKannada', path: 'NotoSansKannada-Regular.ttf', test: /[\u0C80-\u0CFF]/ }, // Kannada
+  { name: 'NotoSansMalayalam', path: 'NotoSansMalayalam-Regular.ttf', test: /[\u0D00-\u0D7F]/ }, // Malayalam
+  { name: 'NotoSansOriya', path: 'NotoSansOriya-Regular.ttf', test: /[\u0B00-\u0B7F]/ }, // Oriya
+  { name: 'NotoNastaliqUrdu', path: 'NotoNastaliqUrdu-Regular.ttf', test: /[\u0600-\u06FF]/ }, // Urdu (the font displayed is not that good for urdu)
+  { name: 'NotoSans', path: 'NotoSans-Regular.ttf', test: /[\u0000-\u007F]/ }, // Default Latin
+];
+async function loadFonts(pdfDoc) {
+  const loadedFonts = {};
+  for (const fontSpec of FONT_MAP) {
+    try {
+      const fontPath = path.join(__dirname, '..', 'fonts', fontSpec.path);
+      const fontBuffer = await fsp.readFile(fontPath);
+      loadedFonts[fontSpec.name] = await pdfDoc.embedFont(fontBuffer, { subset: false });
+
+      console.log('Fonts in directory:', fs.readdirSync(fontDir));
+
+    } catch (e) {
+      console.warn(`⚠️ Font ${fontSpec.name} could not be loaded.`);
+    }
+  }
+  // Always load a default font
+  // loadedFonts['Default'] = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  return loadedFonts;
+}
+
+function pickFontForText(loadedFonts, text) {
+  for (const fontSpec of FONT_MAP) {
+    if (fontSpec.test.test(text) && loadedFonts[fontSpec.name]) {
+      return loadedFonts[fontSpec.name];
+    }
+  }
+// return loadedFonts['Default'];
+return null;
+}
+
+
 class FormFillingService {
   async fillForm(filePath, formData, formFields = [], imageHeight = null) {
     try {
@@ -15,16 +59,18 @@ class FormFillingService {
       pdfDoc.registerFontkit(fontkit);
 
       // Load fonts
-      const defaultFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const devFontPath = path.join(__dirname, '..', 'fonts', 'NotoSansDevanagari-Regular.ttf');
+      // const defaultFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      // const devFontPath = path.join(__dirname, '..', 'fonts', 'NotoSansDevanagari-Regular.ttf');
+      //For more languages
+      const loadedFonts = await loadFonts(pdfDoc);
 
-      let unicodeFont = null;
-      try {
-        const fontBuffer = await fsp.readFile(devFontPath);
-        unicodeFont = await pdfDoc.embedFont(fontBuffer, { subset: false });
-      } catch (err) {
-        console.warn('⚠️ Hindi font not found. Only default font will be used.');
-      }
+      // let unicodeFont = null;
+      // try {
+      //   const fontBuffer = await fsp.readFile(devFontPath);
+      //   unicodeFont = await pdfDoc.embedFont(fontBuffer, { subset: false });
+      // } catch (err) {
+      //   console.warn('⚠️ Hindi font not found. Only default font will be used.');
+      // }
 
       const pages = pdfDoc.getPages();
       const firstPage = pages[0];
@@ -35,6 +81,7 @@ class FormFillingService {
         if (!value) continue;
 
         const field = formFields.find(f => f.id === fieldId);
+
         if (!field || !Array.isArray(field.rect) || field.rect.length !== 4) {
           console.warn(`⚠️ Skipping "${fieldId}": invalid or missing rectangle info.`);
           continue;
@@ -51,23 +98,25 @@ class FormFillingService {
         const fieldHeight = Math.abs(y2 - y);
 
         // Determine which font to use
-        const isHindi = /[\u0900-\u097F]/.test(value);
-        let font = defaultFont;
+        // const isHindi = /[\u0900-\u097F]/.test(value);
+        // let font = defaultFont;
+        //more language:
+        const font = pickFontForText(loadedFonts, value);
 
-        if (isHindi) {
-          if (!unicodeFont) {
-            console.warn(`⚠️ Hindi text detected in "${fieldId}" but Devanagari font not loaded.`);
-          } else {
-            font = unicodeFont;
-          }
-        }
+        // if (isHindi) {
+        //   if (!unicodeFont) {
+        //     console.warn(`⚠️ Hindi text detected in "${fieldId}" but Devanagari font not loaded.`);
+        //   } else {
+        //     font = unicodeFont;
+        //   }
+        // }
 
         if (!font) {
           console.error(`❌ No font available for field "${fieldId}". Skipping.`);
           continue;
         }
 
-        let fontSize = Math.min(fieldHeight * 0.7, 18);
+        let fontSize = Math.min(fieldHeight * 0.8, 16);
         let textWidth = font.widthOfTextAtSize(value, fontSize);
         while (textWidth > fieldWidth - 4 && fontSize > 6) {
           fontSize -= 0.5;

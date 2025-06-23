@@ -140,17 +140,14 @@ useEffect(() => {
     
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#e0f2ff] via-white to-[#f3e8ff] py-12 px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8"
-        >
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8"
+          >
           <ChatHeader title={localizedText.headerTitle} subtitle={localizedText.headerSubtitle} />
         </motion.div>
-      {/* Header Container */}
-      
-
       {/* Search Bar OUTSIDE the container */}
       <div className="max-w-2xl mx-auto mb-8">
         <div className="relative">

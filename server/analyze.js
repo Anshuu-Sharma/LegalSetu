@@ -393,6 +393,6 @@ Full document text (only search if needed):
     console.error('🔥 Chat API Error:', err.response?.data || err.message || err);
     res.status(500).json({ error: 'Chat query failed' });
   }
-});
+}); 
 
 module.exports = router;

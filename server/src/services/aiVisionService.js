@@ -19,24 +19,56 @@ class AIVisionService {
 
 
       const prompt = `
-        Analyze this form image and identify all form fields (text fields, checkboxes, etc.).
-        For each field, extract:
-        1. The field label or description
-        2. The field type (text, checkbox, radio, etc.)
-        3. The precise coordinates of the field as [x, y, x2, y2] where:
-           - x, y is the top-left corner (image coordinate system, y increases downward)
-           - x2, y2 is the bottom-right corner
-           - All values should be in pixels
-        Return the results as a JSON array in this exact format:
-        [
-          {
-            "id": "field_1",
-            "label": "Full Name",
-            "type": "text",
-            "rect": [x, y, x2, y2]
-          }
-        ]
-        Be very precise with the coordinates. Use the image dimensions to calculate accurate positions.
+        You are an expert at analyzing any form image and generating user-friendly, conversational questions for each field. Your task is to:
+
+1. Detect and identify **all form fields** (text fields, checkboxes, radio buttons, dropdowns, signature lines, etc.) present in the attached form image, regardless of the form's type or domain.
+2. For each field, extract:
+    - label: Rewrite the field's label or prompt as a clear, direct question you would ask a user to fill in the field. Use natural, conversational English (e.g., convert "Name" or "Full Name" to "What is your name?", "Age" to "What is your age?", "College" to "What college do you attend?"). If the label is missing or unclear, infer the most appropriate question based on context.
+    - type: Specify the field type (e.g., "text", "checkbox", "radio", "dropdown", "signature", "date", etc.).
+    - rect: The bounding box coordinates of the field as [x, y, x2, y2] in pixels, where x, y is the top-left corner and x2, y2 is the bottom-right corner, relative to the image dimensions.
+    - id: Assign a unique identifier to each field (e.g., "field_1", "field_2", ...).
+
+Output Format:  
+Return a JSON array in the following structure:
+      [
+      {
+      "id": "field_1",
+      "label": "What is your name?",
+      "type": "text",
+      "rect": [x, y, x2, y2]
+      },
+      {
+      "id": "field_2",
+      "label": "What is your age?",
+      "type": "text",
+      "rect": [x, y, x2, y2]
+      }
+      // ...additional fields
+      ]
+
+
+**Instructions:**
+- Be exhaustive: identify every field a user is expected to fill or interact with.
+- For grouped fields (e.g., multiple checkboxes for a single question), list each one separately with its own label and coordinates.
+- Use the actual image dimensions to calculate all positions accurately.
+- Only include fields intended for user input.
+- Ensure the "label" is always a clear question, suitable for asking a user directly.
+
+**Example:**  
+If the form says:  
+"My name is ____________________"
+Return:
+[
+{
+"id": "field_1",
+"label": "What is your name?",
+"type": "text",
+"rect": [x, y, x2, y2]
+}
+]
+
+Return only the JSON array as specified above.
+
       `;
 
       const result = await this.model.generateContent([prompt, imageData]);

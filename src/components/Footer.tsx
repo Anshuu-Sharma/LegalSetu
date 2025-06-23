@@ -1,5 +1,5 @@
 import React from 'react';
-import { Scale, Mail, Phone, MapPin, Facebook, Twitter, Linkedin, Instagram } from 'lucide-react';
+import { Scale, Mail, Phone, MapPin, Linkedin} from 'lucide-react';
 import { motion } from 'framer-motion';
 import LocalizedText from './LocalizedText';
 
@@ -33,17 +33,6 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
             <p className="text-gray-400 text-sm leading-relaxed mb-4">
               <LocalizedText text="India’s first AI-powered legal assistant. Fast, accurate, and multilingual legal services." />
             </p>
-            <div className="flex space-x-3">
-              {[Facebook, Twitter, Linkedin, Instagram].map((Icon, index) => (
-                <a
-                  key={index}
-                  href="#"
-                  className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center hover:bg-primary-600 transition-colors"
-                >
-                  <Icon className="w-4 h-4" />
-                </a>
-              ))}
-            </div>
           </div>
 
           {/* Services */}
@@ -99,10 +88,6 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
                 >
                   <LocalizedText text="Constitution" />
                 </button></li>
-              {/* <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Property Law" /></a></li>
-              <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Business Law" /></a></li>
-              <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Criminal Law" /></a></li>
-              <li><a href="#" className="hover:text-white transition-colors"><LocalizedText text="Labour Law" /></a></li> */}
             </ul>
           </div>
 
@@ -112,41 +97,30 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
               <LocalizedText text="Contact" />
             </h4>
             <div className="space-y-3 text-sm text-gray-400">
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
                 <Mail className="w-4 h-4" />
-                <LocalizedText text="DM on our socials!" />
+                <button
+                  className="hover:underline  bg-transparent border-none p-0"
+                  onClick={() => setActiveSection('about_us')}
+                >
+                  <LocalizedText text="DM us on our socials!" />
+                </button>
               </div>
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-3 gap-1">
                 <Phone className="w-4 h-4" />
-                <LocalizedText text="+91 7217787725" />
+                <LocalizedText text=" +91 7217787725" />
               </div>
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-3 gap-1">
                 <MapPin className="w-4 h-4" />
-                <LocalizedText text="Delhi, India" />
+                <LocalizedText text=" Delhi, India" />
               </div>
               <button
                   className="hover:underline  bg-transparent border-none p-0"
                   onClick={() => setActiveSection('easter')}
                 >
-                  <LocalizedText text="Easter Egg" />
+                  <LocalizedText text=" Easter Egg" />
                 </button>
             </div>
-            
-            {/* <div className="mt-6">
-              <h5 className="font-medium mb-2">
-                <LocalizedText text="Subscribe to our Newsletter" />
-              </h5>
-              <div className="flex w-full">
-                <input
-                  type="email"
-                  placeholder="Your email"
-                  className="flex-1 px-3 py-2 bg-gray-800 text-white rounded-l-lg border border-gray-700 focus:outline-none focus:border-primary-500 min-w-0"
-                />
-                <button className="bg-primary-600 px-4 py-2 rounded-r-lg hover:bg-primary-700 transition-colors whitespace-nowrap">
-                  <LocalizedText text="Subscribe" />
-                </button>
-              </div>
-            </div> */}
           </div>
         </div>
 

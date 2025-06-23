@@ -177,7 +177,7 @@ const ChatInterface = () => {
     }
   };
   const localizedText = {
-    headerTitle: "Legal Assistant",
+    headerTitle: "Neeti",
     headerSubtitle: "Get reliable legal guidance from AI in real-time.",
     welcomeMessage: "Hello! How may I assist you today?",
   };

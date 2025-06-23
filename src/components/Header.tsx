@@ -64,7 +64,7 @@ const Header: React.FC<HeaderProps> = ({
 
   const navigation = [
     { name: 'Home', id: 'home' },
-    { name: 'Legal Assistant', id: 'chat' },
+    { name: 'Neeti', id: 'chat' },
     { name: 'Document Analysis', id: 'documents' },
     { name: 'Constitution', id: 'cases' }, 
     { name: 'Form Assistant', id: 'forms' },

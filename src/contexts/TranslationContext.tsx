@@ -13,7 +13,7 @@ const TranslationContext = createContext<TranslationContextType>({
   language: 'en',
   setLanguage: () => {},
   t: async (text: string) => text,
-  headerTitle: 'Legal Assistant',
+  headerTitle: 'Neeti',
   headerSubtitle: 'Online • Ready to help',
   updateHeaders: async () => {}
 });
@@ -25,7 +25,7 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
     return 'en';
   });
-  const [headerTitle, setHeaderTitle] = useState('Legal Assistant');
+  const [headerTitle, setHeaderTitle] = useState('Neeti');
   const [headerSubtitle, setHeaderSubtitle] = useState('Online • Ready to help');
 
   // Save language to localStorage
@@ -68,7 +68,7 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setHeaderSubtitle(data.subtitle);
     } catch (error) {
       console.error('Fetching headers failed, using defaults:', error);
-      const defaultTitle = await t('Legal Assistant');
+      const defaultTitle = await t('Neeti');
       const defaultSubtitle = await t('Online • Ready to help');
       setHeaderTitle(defaultTitle);
       setHeaderSubtitle(defaultSubtitle);
