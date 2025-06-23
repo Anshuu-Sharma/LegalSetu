@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Highlighter from 'react-highlight-words';
-import { Search, Sparkles, FileText, Languages, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  Search, Sparkles, FileText, Languages,
+  ChevronDown, ChevronUp, Mic, MicOff
+} from 'lucide-react';
 import { useTranslation } from '../contexts/TranslationContext'; 
 import LocalizedText from './LocalizedText';
 import ChatHeader from './ChatHeader';
+import VoicePlayer from './VoicePlayer';
 
-// Language options
 const languages = [
   { code: 'en', name: 'English' },
   { code: 'hi', name: 'हिन्दी' },
@@ -23,9 +26,6 @@ const languages = [
   { code: 'ur', name: 'اُردُو' }
 ];
 
-
-
-
 interface ConstitutionArticle {
   article: string | number;
   title: string;
@@ -33,14 +33,15 @@ interface ConstitutionArticle {
 }
 
 const CaseLaws: React.FC = () => {
-  const { t, language, setLanguage } = useTranslation();
+  const { t, language } = useTranslation();
   const [articles, setArticles] = useState<ConstitutionArticle[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [results, setResults] = useState<ConstitutionArticle[]>([]);
   const [loading, setLoading] = useState(true);
-  // const [language, setLanguage] = useState('en');
   const [placeholder, setPlaceholder] = useState("Search by keyword or article number (e.g., 'article 14', 'equality')");
   const [expandedArticle, setExpandedArticle] = useState<string | number | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -49,7 +50,7 @@ const CaseLaws: React.FC = () => {
     });
     return () => { isMounted = false; };
   }, [t, language]);
-  
+
   useEffect(() => {
     fetch('/constitution_of_india.json')
       .then(res => res.json())
@@ -62,7 +63,6 @@ const CaseLaws: React.FC = () => {
         setLoading(false);
       });
   }, []);
-  
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -72,17 +72,52 @@ const CaseLaws: React.FC = () => {
       setResults([]);
       return;
     }
+
     const match = value.match(/article\s*(\d+[A-Z]?)/i) || value.match(/^(\d+[A-Z]?)$/i);
     if (match) {
       setResults(articles.filter(a => String(a.article) === match[1]));
       return;
     }
+
     setResults(
       articles.filter(a =>
         (a.title && a.title.toLowerCase().includes(value.toLowerCase())) ||
         (a.description && a.description.toLowerCase().includes(value.toLowerCase()))
       )
     );
+  };
+
+  const toggleMic = () => {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      alert('Speech recognition is not supported in this browser.');
+      return;
+    }
+
+    if (!isRecording) {
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+
+      recognition.lang = language || 'en-IN';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => setIsRecording(true);
+      recognition.onerror = () => setIsRecording(false);
+      recognition.onend = () => setIsRecording(false);
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setSearchTerm(transcript);
+        setExpandedArticle(null);
+        handleSearch({ target: { value: transcript } } as React.ChangeEvent<HTMLInputElement>);
+      };
+
+      recognition.start();
+    } else {
+      recognitionRef.current?.stop();
+      setIsRecording(false);
+    }
   };
 
   const handleExpand = (articleId: string | number) => {
@@ -102,32 +137,28 @@ const CaseLaws: React.FC = () => {
     .split(/\s+/)
     .filter(Boolean);
 
-    const [translatedExpandedTitle, setTranslatedExpandedTitle] = React.useState(expandedCard?.title || '');
-const [translatedExpandedDescription, setTranslatedExpandedDescription] = React.useState(expandedCard?.description || '');
+  const [translatedExpandedTitle, setTranslatedExpandedTitle] = useState(expandedCard?.title || '');
+  const [translatedExpandedDescription, setTranslatedExpandedDescription] = useState(expandedCard?.description || '');
 
-React.useEffect(() => {
-  let isMounted = true;
-  if (expandedCard) {
-    t(expandedCard.title).then(result => {
-      if (isMounted) setTranslatedExpandedTitle(result);
-    });
-    t(expandedCard.description).then(result => {
-      if (isMounted) setTranslatedExpandedDescription(result);
-    });
-  }
-  return () => { isMounted = false; };
-}, [expandedCard, t, language]);
+  useEffect(() => {
+    let isMounted = true;
+    if (expandedCard) {
+      t(expandedCard.title).then(result => {
+        if (isMounted) setTranslatedExpandedTitle(result);
+      });
+      t(expandedCard.description).then(result => {
+        if (isMounted) setTranslatedExpandedDescription(result);
+      });
+    }
+    return () => { isMounted = false; };
+  }, [expandedCard, t, language]);
 
-const [translatedTitles, setTranslatedTitles] = useState<{[key: string]: string}>({});
+  const [translatedTitles, setTranslatedTitles] = useState<{ [key: string]: string }>({});
 
-const localizedText = {
-    headerTitle: "Constitutional Article Search",
-    headerSubtitle: "Search and explore our constitution instantly.",
-  };
-useEffect(() => {
+  useEffect(() => {
     let isMounted = true;
     const translateAll = async () => {
-      const translations: {[key: string]: string} = {};
+      const translations: { [key: string]: string } = {};
       await Promise.all(results.map(async (article) => {
         translations[article.article] = await t(article.title);
       }));
@@ -136,50 +167,72 @@ useEffect(() => {
     translateAll();
     return () => { isMounted = false; };
   }, [results, t, language]);
-  
-    
+
+  const localizedText = {
+    headerTitle: "Constitutional Article Search",
+    headerSubtitle: "Search and explore our constitution instantly.",
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#e0f2ff] via-white to-[#f3e8ff] py-12 px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8"
-          >
-          <ChatHeader title={localizedText.headerTitle} subtitle={localizedText.headerSubtitle} />
-        </motion.div>
-      {/* Search Bar OUTSIDE the container */}
-      <div className="max-w-2xl mx-auto mb-8">
-        <div className="relative">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={handleSearch}
-            placeholder={placeholder}
-            className="w-full p-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all shadow text-base"
-          />
-          <Search className="absolute right-4 top-4 text-gray-500 pointer-events-none" />
-        </div>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8"
+      >
+        <ChatHeader title={localizedText.headerTitle} subtitle={localizedText.headerSubtitle} />
+      </motion.div>
+
+      {/* Search Bar */}
+     <div className="max-w-2xl mx-auto mb-8">
+  <div className="relative">
+    <input
+      type="text"
+      value={searchTerm}
+      onChange={handleSearch}
+      placeholder={placeholder}
+      className="w-full pr-24 pl-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all shadow text-base"
+    />
+
+    {/* Mic Button */}
+    <button
+      onClick={toggleMic}
+      title={isRecording ? 'Stop Recording' : 'Start Voice Input'}
+      className={`absolute top-1/2 right-12 -translate-y-1/2 transition-all duration-200 ${
+        isRecording
+          ? 'text-red-600 animate-pulse drop-shadow-md'
+          : 'text-gray-400 hover:text-blue-600'
+      }`}
+    >
+      {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
+    </button>
+
+    {/* Search Icon */}
+    <div className="absolute top-1/2 right-4 -translate-y-1/2 pointer-events-none">
+      <Search size={20} className="text-gray-500" />
+    </div>
+  </div>
+</div>
+
 
       {/* Results */}
       <div className="w-full flex justify-center mb-8">
-        <style>
-          {`
-            @media (max-width: 920px) {
-              .custom-article-grid {
-                grid-template-columns: 1fr !important;
-              }
+        <style>{`
+          @media (max-width: 920px) {
+            .custom-article-grid {
+              grid-template-columns: 1fr !important;
             }
-            .search-highlight {
-              background-color: #fff59d;
-              color: #222;
-              font-weight: bold;
-              border-radius: 3px;
-              padding: 0 2px;
-            }
-          `}
-        </style>
+          }
+          .search-highlight {
+            background-color: #fff59d;
+            color: #222;
+            font-weight: bold;
+            border-radius: 3px;
+            padding: 0 2px;
+          }
+        `}</style>
+
         {loading ? (
           <div className="flex justify-center items-center py-8">
             <motion.div
@@ -192,9 +245,13 @@ useEffect(() => {
           <div className="w-full max-w-xl flex flex-col items-center bg-blue-50 border border-blue-200 rounded-2xl p-6 shadow text-center">
             <div className="flex items-center justify-center mb-3">
               <Sparkles className="w-6 h-6 text-blue-400 mr-2" />
-              <span className="font-semibold text-blue-700 text-lg"><LocalizedText text='No articles found for your query.'/></span>
+              <span className="font-semibold text-blue-700 text-lg">
+                <LocalizedText text="No articles found for your query." />
+              </span>
             </div>
-            <div className="text-gray-600"><LocalizedText text='Try a different keyword or article number.'/></div>
+            <div className="text-gray-600">
+              <LocalizedText text="Try a different keyword or article number." />
+            </div>
           </div>
         ) : showArticles ? (
           expandedCard ? (
@@ -204,19 +261,26 @@ useEffect(() => {
                 onClick={() => setExpandedArticle(null)}
               >
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-blue-700">
-                    <LocalizedText text={`Article ${expandedCard.article}:${" "}`}/>
-                    <Highlighter
-                      highlightClassName="search-highlight"
-                      searchWords={searchWords} 
-                      autoEscape={true}
-                      textToHighlight={translatedExpandedTitle}
-                    />
-                  </h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-blue-700">
+                      <LocalizedText text={`Article ${expandedCard.article}: `} />
+                      <Highlighter
+                        highlightClassName="search-highlight"
+                        searchWords={searchWords}
+                        autoEscape={true}
+                        textToHighlight={translatedExpandedTitle}
+                      />
+                    </h2>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <VoicePlayer
+                        text={`Article ${expandedCard.article}. ${translatedExpandedTitle}. ${translatedExpandedDescription}`}
+                        language={language}
+                      />
+                    </div>
+                  </div>
                   <ChevronUp className="w-6 h-6 text-gray-400" />
                 </div>
                 <div className="mt-6 text-gray-700">
-                  <LocalizedText text={`${expandedCard.description}`}/>
                   <Highlighter
                     highlightClassName="search-highlight"
                     searchWords={searchWords}
@@ -225,36 +289,44 @@ useEffect(() => {
                   />
                 </div>
                 <div className="mt-6 text-right">
-                  <span className="text-blue-500 text-sm italic"><LocalizedText text='(Click anywhere to go back)'/></span>
+                  <span className="text-blue-500 text-sm italic">
+                    <LocalizedText text="(Click anywhere to go back)" />
+                  </span>
                 </div>
               </div>
             </div>
           ) : (
             <div
               className="custom-article-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 justify-center items-start"
-              style={{ width: '100%', maxWidth: '1400px' }}
+              style={{ width: "100%", maxWidth: "1400px" }}
             >
-              {results.map(article => 
-                
-               (
+              {results.map((article) => (
                 <div
                   key={article.article}
                   className="w-full bg-white border border-gray-100 rounded-xl p-4 shadow flex flex-col text-sm cursor-pointer transition hover:shadow-xl"
                   onClick={() => handleExpand(article.article)}
                 >
                   <div className="flex items-center justify-between">
-                    <h2 className="text-base font-bold text-blue-700">
-                      <LocalizedText text={`Article ${article.article}:${" "}`}/>
-                      <Highlighter
-                        highlightClassName="search-highlight"
-                        searchWords={searchWords}
-                        autoEscape={true}
-                        textToHighlight={translatedTitles[article.article] || article.title}
-                      />
-                    </h2>
-                    <span>
-                      <ChevronDown className="w-4 h-4 text-gray-400" />
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-bold text-blue-700">
+                        <LocalizedText text={`Article ${article.article}: `} />
+                        <Highlighter
+                          highlightClassName="search-highlight"
+                          searchWords={searchWords}
+                          autoEscape={true}
+                          textToHighlight={translatedTitles[article.article] || article.title}
+                        />
+                      </h2>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <VoicePlayer
+                          text={`Article ${article.article}. ${
+                            translatedTitles[article.article] || article.title
+                          }`}
+                          language={language}
+                        />
+                      </div>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
                   </div>
                 </div>
               ))}
@@ -262,7 +334,7 @@ useEffect(() => {
           )
         ) : null}
       </div>
-      </div>
+    </div>
   );
 };
 

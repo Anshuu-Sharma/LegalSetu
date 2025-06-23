@@ -1,15 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTTS } from '../contexts/ttsContext';
 
+
 interface VoicePlayerProps {
   text: string;
   language?: string;
   index?: number;
 }
 
-const API_BASE = import.meta.env.DEV
-  ? 'http://localhost:4000'
-  : import.meta.env.VITE_API_URL || '';
+const API_BASE = import.meta.env.VITE_API_URL;
+
 
 const VoicePlayer: React.FC<VoicePlayerProps> = ({ text, language = 'en' }) => {
   const { ttsEnabled } = useTTS();
