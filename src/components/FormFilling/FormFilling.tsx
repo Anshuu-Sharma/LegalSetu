@@ -326,7 +326,7 @@ const FormFilling: React.FC = () => {
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileChange}
-                accept=".pdf"
+                accept=".pdf, .jpg, .png, .docx"
                 className="hidden"
               />
               <Upload className="h-16 w-16 text-blue-600 mx-auto mb-4" />
@@ -338,6 +338,10 @@ const FormFilling: React.FC = () => {
               </p>
               <div className="flex justify-center space-x-2 text-sm text-gray-600">
                 <span className="px-2.5 py-1 bg-gray-100 rounded-md">PDF</span>
+                <span className="px-2.5 py-1 bg-gray-100 rounded-md">JPG</span>
+                <span className="px-2.5 py-1 bg-gray-100 rounded-md">PNG</span>
+                <span className="px-2.5 py-1 bg-gray-100 rounded-md">DOCX</span>
+
               </div>
               <p className="text-gray-500 text-sm mt-2 mb-0 text-center">
                 <LocalizedText text="(More languages coming soon)" />
