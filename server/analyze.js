@@ -26,8 +26,16 @@ function getCacheKey(text, lang) {
 // --- Text extraction utilities ---
 const extractTextFromImage = async (filePath) => {
   const result = await Tesseract.recognize(filePath, 'eng');
-  return result.data.text;
+  const text = result.data.text?.trim() || '';
+
+  if (text.length < 20) {
+    throw new Error('OCR failed or text too short to analyze.');
+  }
+
+  return text;
 };
+
+
 
 const extractTextFromPDF = async (filePath) => {
   const buffer = fs.readFileSync(filePath);
@@ -49,14 +57,45 @@ const extractTextFromDOCX = async (filePath) => {
   }
   return { text, pages: 1 };
 };
+// Add this near the top with other utilities
+const extractTextFromAny = async (filePath, mime, ext) => {
+  if (
+    mime === 'application/pdf' ||
+    ext === '.pdf'
+  ) {
+    const result = await extractTextFromPDF(filePath);
+    return { text: result.text, pages: result.pages };
+  } else if (
+    mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    ext === '.docx'
+  ) {
+    const result = await extractTextFromDOCX(filePath);
+    return { text: result.text, pages: result.pages };
+  } else if (
+    mime.startsWith('image/') ||
+    ext === '.jpg' || ext === '.jpeg' || ext === '.png' || ext === '.bmp' || ext === '.tif' || ext === '.tiff'
+  ) {
+    const text = await extractTextFromImage(filePath);
+    return { text, pages: 1 };
+  } else if (mime === 'text/plain' || ext === '.txt') {
+    const text = await fs.promises.readFile(filePath, 'utf8');
+    return { text, pages: 1 };
+  } else if (mime === 'application/json' || ext === '.json') {
+    const json = await fs.promises.readFile(filePath, 'utf8');
+    return { text: json.toString(), pages: 1 };
+  } else {
+    throw new Error('Unsupported file type');
+  }
+};
+
+
 
 // --- Gemini API call for document analysis ---
 const callGeminiFlash = async (text) => {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-  const body = {
-    contents: [{
-      parts: [{
-        text: `You are an expert legal assistant whose primary responsibility is to protect the user. Carefully read the legal document below and return a detailed, user-centric analysis that simplifies legal jargon and highlights any content that could negatively affect the user.
+
+  const prompt = `
+You are an expert legal assistant whose primary responsibility is to protect the user. Carefully read the legal document below and return a detailed, user-centric analysis that simplifies legal jargon and highlights any content that could negatively affect the user.
 
 Responsibilities:
 - Detect hidden risks, vague obligations, or legal traps.
@@ -80,29 +119,48 @@ Important:
 }
 
 Here is the document:
-"""${text.slice(0, 100000)}"""`
-      }]
-    }],
-    generationConfig: { temperature: 0 }
-  };
+"""${text.slice(0, 100000)}"""
+`.trim();
 
-  const response = await axios.post(url, body, {
-    headers: { 'Content-Type': 'application/json' },
-  });
-
-  let raw = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-  raw = raw.replace(/``````/g, '').trim();
-  const firstBrace = raw.indexOf('{');
-  const lastBrace = raw.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace !== -1) {
-    raw = raw.substring(firstBrace, lastBrace + 1);
-  }
   try {
-    return JSON.parse(raw);
+    const response = await axios.post(
+      url,
+      {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0 }
+      },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+    let raw = response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+    if (!raw) throw new Error('Empty response from Gemini');
+
+    // ✅ Remove non-JSON text before and after actual JSON block
+    const firstBrace = raw.indexOf('{');
+    const lastBrace = raw.lastIndexOf('}');
+    if (firstBrace === -1 || lastBrace === -1) {
+      throw new Error('Response does not contain valid JSON structure');
+    }
+
+    const jsonString = raw.substring(firstBrace, lastBrace + 1);
+
+    try {
+      const parsed = JSON.parse(jsonString);
+      if (!parsed.summary || !parsed.clauses || !parsed.risks || !parsed.suggestions) {
+        throw new Error('Missing expected keys in parsed JSON');
+      }
+      return parsed;
+    } catch (parseErr) {
+      console.error('❌ JSON Parse Error:\n', jsonString);
+      throw new Error('Failed to parse Gemini response JSON');
+    }
   } catch (err) {
-    throw new Error('Failed to parse Gemini response');
+    console.error('🔥 Gemini API Error:', err.message || err);
+    throw err;
   }
 };
+
 
 // --- Gemini API call for chatbot ---
 const callGeminiChat = async (query, history = []) => {
@@ -207,38 +265,22 @@ router.post('/analyze', upload.single('file'), async (req, res) => {
   try {
     const mime = file.mimetype;
     const ext = path.extname(file.originalname).toLowerCase();
-    let text = '';
-    let pages = 1;
 
-    if (mime === 'application/pdf') {
-      const result = await extractTextFromPDF(file.path);
-      text = result.text;
-      pages = result.pages;
-    } else if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || ext === '.docx') {
-      const result = await extractTextFromDOCX(file.path);
-      text = result.text;
-      pages = result.pages;
-    } else if (mime.startsWith('image/')) {
-      text = await extractTextFromImage(file.path);
-    } else {
-      throw new Error('Unsupported file type');
-    }
-
-    fs.unlinkSync(file.path); // clean up
+    const { text, pages } = await extractTextFromAny(file.path, mime, ext);
+    fs.unlinkSync(file.path); // cleanup uploaded file
 
     const requestedLang = req.body.language || 'en';
     const cacheKey = getCacheKey(text, requestedLang);
 
-    // Return cached analysis if available
+    // Return cached result if available
     if (analysisCache.has(cacheKey)) {
       return res.json({
         status: 'completed',
         analysisId: cacheKey,
-        analysis: analysisCache.get(cacheKey)
+        analysis: analysisCache.get(cacheKey),
       });
     }
 
-    // Generate new analysis
     const parsed = await callGeminiFlash(text);
     let resultAnalysis = {
       summary: parsed.summary,
@@ -250,15 +292,13 @@ router.post('/analyze', upload.single('file'), async (req, res) => {
       _meta: {
         pages,
         pageMetadata: parsed.pageMetadata || {},
-      }
+      },
     };
 
-    // Translate if needed
     if (requestedLang !== 'en') {
       resultAnalysis = await translateAnalysisFields(resultAnalysis, requestedLang);
     }
 
-    // Cache and return
     analysisCache.set(cacheKey, resultAnalysis);
 
     return res.json({
@@ -271,6 +311,7 @@ router.post('/analyze', upload.single('file'), async (req, res) => {
     return res.status(500).json({ status: 'error', error: 'Analysis failed' });
   }
 });
+
 
 // --- Retrieve analysis by ID (with on-the-fly translation if needed) ---
 router.get('/analysis/:id', async (req, res) => {
