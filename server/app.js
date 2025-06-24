@@ -64,6 +64,10 @@ app.get('/health', (req, res) => {
     }
   });
 });
+// ✅ Root route for health check or friendly message
+app.get('/', (req, res) => {
+  res.send('LegalSetu backend is running!');
+});
 
 // ✅ Error handler
 app.use((error, req, res, next) => {
