@@ -25,7 +25,7 @@ class AIVisionService {
 2. For each field, extract:
     - label: Rewrite the field's label or prompt as a clear, direct question you would ask a user to fill in the field. Use natural, conversational English (e.g., convert "Name" or "Full Name" to "What is your name?", "Age" to "What is your age?", "College" to "What college do you attend?"). If the label is missing or unclear, infer the most appropriate question based on context.
     - type: Specify the field type (e.g., "text", "checkbox", "radio", "dropdown", "signature", "date", etc.).
-    - rect: The bounding box coordinates of the field as [x, y, x2, y2] in pixels, where x, y is the top-left corner and x2, y2 is the bottom-right corner, relative to the image dimensions.
+    - rect: The bounding box coordinates of the field as [x, y, x2, y2] in pixels.
     - id: Assign a unique identifier to each field (e.g., "field_1", "field_2", ...).
 
 Output Format:  
@@ -37,12 +37,6 @@ Return a JSON array in the following structure:
       "type": "text",
       "rect": [x, y, x2, y2]
       },
-      {
-      "id": "field_2",
-      "label": "What is your age?",
-      "type": "text",
-      "rect": [x, y, x2, y2]
-      }
       // ...additional fields
       ]
 
@@ -75,7 +69,9 @@ Return only the JSON array as specified above.
       const response = await result.response;
       const text = response.text();
       const formFields = this.extractJsonFromResponse(text);
-
+      
+      console.log("debug: fields by AI", formFields);
+      
       if (targetLanguage !== 'en') {
       const translatedFields = await this.translateFieldLabels(formFields, targetLanguage);
       return { formFields: translatedFields, imageHeight, imageWidth };

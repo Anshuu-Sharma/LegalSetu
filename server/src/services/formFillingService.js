@@ -88,11 +88,11 @@ class FormFillingService {
         }
 
         let [x, y, x2, y2] = field.rect;
-        if (imageHeight) {
-          y = pageHeight - y;
-          y2 = pageHeight - y2;
-          if (y2 < y) [y, y2] = [y2, y];
-        }
+        // if (imageHeight) {
+        //   y = pageHeight - y;
+        //   y2 = pageHeight - y2;
+        //   if (y2 < y) [y, y2] = [y2, y];
+        // }
 
         const fieldWidth = Math.abs(x2 - x);
         const fieldHeight = Math.abs(y2 - y);
@@ -125,21 +125,25 @@ class FormFillingService {
 
         const textX = x + (fieldWidth - textWidth) / 2;
         const textHeight = font.heightAtSize(fontSize);
-        const textY = y + (fieldHeight / 2) - (textHeight / 2) + (fontSize * 2.5);
+        // const textY = y - (fieldHeight / 2) - (textHeight / 2) + (fontSize * 2.9);
+        const textY = pageHeight-y-7.5;
+        
+        console.log("debug: final text location",textX, textY);
+        
 
         // Highlight box 
         firstPage.drawRectangle({
           x: textX,
           y: textY,
           width: textWidth,
-          height: textHeight,
+          height: textHeight, 
           color: rgb(1, 1, 0.4), // yellow
           opacity: 1
         });
 
         // Draw text
         firstPage.drawText(value, {
-          x: textX,
+          x: textX, 
           y: textY,
           size: fontSize,
           font,
