@@ -116,7 +116,7 @@ class FormFillingService {
           continue;
         }
 
-        let fontSize = Math.min(fieldHeight * 0.8, 16);
+        let fontSize = Math.min(fieldHeight * 0.8, 14);
         let textWidth = font.widthOfTextAtSize(value, fontSize);
         while (textWidth > fieldWidth - 4 && fontSize > 6) {
           fontSize -= 0.5;
