@@ -12,6 +12,9 @@ const analyzeRoutes = require('./analyze');
 const translationRoutes = require('./index');
 const formsRoutes = require('./src/routes/forms');
 const ttsRoute = require('./src/routes/tts');
+const lawyerRoutes = require('./src/routes/lawyerRoutes');
+
+
 
 const app = express();
 
@@ -36,6 +39,7 @@ app.use(ttsRoute);
 app.use('/api', analyzeRoutes);
 app.use('/api', translationRoutes);
 app.use('/api/forms', formsRoutes);
+app.use('/api/lawyers', lawyerRoutes);
 
 // ✅ Ensure upload directories exist
 const uploadDirs = [
