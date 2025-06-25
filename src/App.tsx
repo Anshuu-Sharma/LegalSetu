@@ -9,12 +9,14 @@ import Footer from './components/Footer';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import AboutUs from './components/AboutUs.tsx';
+import Advocate from './components/Advocate.tsx';
 import { TranslationProvider } from './contexts/TranslationContext';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import CaseLaws from './components/CaseLaws';
 import EasterEgg from './components/EasterEgg.tsx';
 import { TTSProvider } from './contexts/ttsContext';
+
 
 
 
@@ -120,7 +122,7 @@ const App: React.FC = () => {
             {activeSection === 'forms' && <FormFilling />}
             {activeSection === 'about_us' && <AboutUs />}
             {activeSection === 'cases' && <CaseLaws />}
-
+            {activeSection === 'advocate' && <Advocate/>}
             {activeSection === 'easter' && <EasterEgg />}
           </main>
 
