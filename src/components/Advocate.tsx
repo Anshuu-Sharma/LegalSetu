@@ -24,7 +24,7 @@ import {
   ArrowDownUp,
 } from "lucide-react";
 import { motion } from "framer-motion";
-
+const apiUrl = import.meta.env.VITE_API_URL;
 const containerStyle = {
   width: "100%",
   maxWidth: "900px",
@@ -85,7 +85,7 @@ const Advocate: React.FC = () => {
         setUserLocation({ lat: latitude, lng: longitude });
 
         try {
-          const res = await fetch(`/api/lawyers/nearby?lat=${latitude}&lng=${longitude}`);
+          const res = await fetch(`${apiUrl}/api/lawyers/nearby?lat=${latitude}&lng=${longitude}`);
           if (!res.ok) throw new Error("Failed to fetch nearby lawyers");
           const data = await res.json();
 
