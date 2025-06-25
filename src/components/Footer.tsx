@@ -73,6 +73,14 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
                   <LocalizedText text="About Us" />
                 </button>
               </li>
+              <li>
+                <button
+                  className="hover:underline  bg-transparent border-none p-0"
+                  onClick={() => setActiveSection('advocate')}
+                >
+                  <LocalizedText text="Advocate" />
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -120,6 +128,7 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
                 >
                   <LocalizedText text=" Easter Egg" />
                 </button>
+                
             </div>
           </div>
         </div>
