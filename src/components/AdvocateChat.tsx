@@ -63,6 +63,7 @@ const AdvocateChat: React.FC = () => {
   const [advocatesLoading, setAdvocatesLoading] = useState(true);
   const [error, setError] = useState('');
   const [authError, setAuthError] = useState('');
+  const [authReady, setAuthReady] = useState(false);
   const [filters, setFilters] = useState({
     specialization: '',
     language: '',
@@ -102,31 +103,40 @@ const AdvocateChat: React.FC = () => {
     }
   };
 
+  // Wait for auth state and then fetch data
   useEffect(() => {
-    // Check if user is logged in
-    const checkAuth = () => {
-      if (!auth.currentUser) {
-        setAuthError('Please login to access advocate chat');
-        setAdvocatesLoading(false);
-        return;
-      }
-      fetchAdvocates();
-      fetchConsultations();
-    };
-
-    // Wait for auth state to be determined
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    console.log('🔍 Setting up auth state listener...');
+    
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      console.log('🔍 Auth state changed:', user ? user.email : 'No user');
+      
       if (user) {
+        console.log('✅ User is authenticated:', user.email);
         setAuthError('');
-        checkAuth();
+        setAuthReady(true);
+        
+        // Wait a bit for token to be ready
+        setTimeout(() => {
+          fetchAdvocates();
+          fetchConsultations();
+        }, 1000);
       } else {
+        console.log('❌ User is not authenticated');
         setAuthError('Please login to access advocate chat');
         setAdvocatesLoading(false);
+        setAuthReady(false);
       }
     });
 
     return () => unsubscribe();
-  }, [filters]);
+  }, []);
+
+  // Refetch when filters change (only if auth is ready)
+  useEffect(() => {
+    if (authReady && auth.currentUser) {
+      fetchAdvocates();
+    }
+  }, [filters, authReady]);
 
   useEffect(() => {
     if (activeConsultation) {
@@ -147,12 +157,19 @@ const AdvocateChat: React.FC = () => {
   };
 
   const fetchAdvocates = async () => {
+    if (!authReady || !auth.currentUser) {
+      console.log('⏳ Auth not ready, skipping advocate fetch');
+      return;
+    }
+
     try {
       setAdvocatesLoading(true);
       setError('');
       
+      console.log('🔄 Getting auth token...');
       const token = await getAuthToken();
       if (!token) {
+        console.log('❌ No token available');
         return;
       }
 
@@ -161,9 +178,10 @@ const AdvocateChat: React.FC = () => {
         if (value) params.append(key, value.toString());
       });
 
-      console.log('🔍 Fetching advocates with URL:', `${import.meta.env.VITE_API_URL}/api/advocate-chat/advocates?${params}`);
+      const url = `${import.meta.env.VITE_API_URL}/api/advocate-chat/advocates?${params}`;
+      console.log('🔍 Fetching advocates from:', url);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/advocate-chat/advocates?${params}`, {
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -171,6 +189,13 @@ const AdvocateChat: React.FC = () => {
       });
 
       console.log('📡 Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Response error:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
       const data = await response.json();
       console.log('📡 Response data:', data);
 
@@ -183,13 +208,15 @@ const AdvocateChat: React.FC = () => {
       }
     } catch (error) {
       console.error('❌ Error fetching advocates:', error);
-      setError('Network error while fetching advocates');
+      setError(`Network error: ${error.message}`);
     } finally {
       setAdvocatesLoading(false);
     }
   };
 
   const fetchConsultations = async () => {
+    if (!authReady || !auth.currentUser) return;
+
     try {
       const token = await getAuthToken();
       if (!token) return;
@@ -452,9 +479,10 @@ const AdvocateChat: React.FC = () => {
             </label>
             <button
               onClick={fetchAdvocates}
-              className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              disabled={advocatesLoading}
+              className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className={`w-4 h-4 ${advocatesLoading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
             </button>
           </div>

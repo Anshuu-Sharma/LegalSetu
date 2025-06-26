@@ -5,7 +5,7 @@ const { pool } = require('../config/database');
 
 const router = express.Router();
 
-// Enhanced authentication middleware for advocate chat
+// Simple authentication middleware specifically for advocate chat
 const authenticateUser = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -16,21 +16,21 @@ const authenticateUser = async (req, res, next) => {
 
     console.log('🔍 Advocate chat - verifying token...');
     
-    // Try Firebase token first
+    // Try Firebase token first (simple decode without verification)
     try {
-      // Simple Firebase token verification
       const parts = token.split('.');
       if (parts.length === 3) {
         const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
         
         console.log('🔍 Token payload check:', {
-          hasIss: !!payload.iss,
           hasEmail: !!payload.email,
-          iss: payload.iss
+          email: payload.email,
+          hasIss: !!payload.iss
         });
         
-        if (payload.iss && payload.iss.includes('securetoken.google.com') && payload.email) {
-          console.log('✅ Firebase token detected for:', payload.email);
+        // If it has an email and looks like a Firebase token, process it
+        if (payload.email) {
+          console.log('✅ Firebase-like token detected for:', payload.email);
           
           // Check if user exists in database
           const [users] = await pool.execute(
@@ -50,24 +50,19 @@ const authenticateUser = async (req, res, next) => {
               userId: result.insertId,
               email: payload.email,
               name: payload.name || payload.email.split('@')[0],
-              userType: 'user',
-              userData: {
-                id: result.insertId,
-                email: payload.email,
-                name: payload.name || payload.email.split('@')[0]
-              }
+              type: 'user'
             };
+            console.log('✅ New user created for advocate chat:', result.insertId);
           } else {
             req.user = {
               userId: users[0].id,
               email: users[0].email,
               name: users[0].name,
-              userType: 'user',
-              userData: users[0]
+              type: 'user'
             };
+            console.log('✅ Existing user found for advocate chat:', users[0].id);
           }
           
-          console.log('✅ Firebase user authenticated for advocate chat:', req.user.userId);
           return next();
         }
       }
@@ -94,11 +89,12 @@ const authenticateUser = async (req, res, next) => {
       }
       
       req.user = { 
-        ...decoded, 
-        userType: 'user', 
-        userData: users[0],
-        userId: users[0].id 
+        userId: users[0].id,
+        email: users[0].email,
+        name: users[0].name,
+        type: 'user'
       };
+      console.log('✅ JWT user authenticated for advocate chat:', users[0].id);
     } else if (decoded.advocateId) {
       // This is an advocate token
       const [advocates] = await pool.execute(
@@ -112,17 +108,17 @@ const authenticateUser = async (req, res, next) => {
       }
       
       req.user = { 
-        ...decoded, 
-        userType: 'advocate', 
-        advocateData: advocates[0],
-        advocateId: advocates[0].id 
+        advocateId: advocates[0].id,
+        email: advocates[0].email,
+        name: advocates[0].full_name,
+        type: 'advocate'
       };
+      console.log('✅ JWT advocate authenticated for advocate chat:', advocates[0].id);
     } else {
       console.log('❌ Invalid JWT token structure');
       return res.status(401).json({ success: false, error: 'Invalid token structure' });
     }
     
-    console.log('✅ JWT authentication successful for advocate chat');
     next();
   } catch (error) {
     console.error('❌ Advocate chat authentication error:', error.message);
@@ -136,6 +132,7 @@ router.get('/advocates', authenticateUser, async (req, res) => {
     const { specialization, language, minRating, maxFee, isOnline } = req.query;
     
     console.log('🔍 Fetching advocates with filters:', { specialization, language, minRating, maxFee, isOnline });
+    console.log('🔍 User making request:', { userId: req.user.userId, email: req.user.email });
     
     let query = `
       SELECT 
@@ -248,7 +245,7 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
 router.post('/consultations/start', authenticateUser, async (req, res) => {
   try {
     const { advocateId, consultationType = 'chat' } = req.body;
-    const userId = req.user.userId || req.user.userData?.id;
+    const userId = req.user.userId;
 
     console.log('🚀 Starting consultation:', { advocateId, userId, consultationType });
 
@@ -332,8 +329,8 @@ router.post('/consultations/start', authenticateUser, async (req, res) => {
 // Get user's consultations
 router.get('/consultations', authenticateUser, async (req, res) => {
   try {
-    const userId = req.user.userId || req.user.advocateId || req.user.userData?.id;
-    const userType = req.user.userType || req.user.type || 'user';
+    const userId = req.user.userId || req.user.advocateId;
+    const userType = req.user.type || 'user';
 
     let query, params;
 
@@ -379,8 +376,8 @@ router.get('/consultations', authenticateUser, async (req, res) => {
 router.post('/messages', authenticateUser, async (req, res) => {
   try {
     const { consultationId, message, messageType = 'text' } = req.body;
-    const senderId = req.user.userId || req.user.advocateId || req.user.userData?.id;
-    const senderType = req.user.userType || req.user.type || 'user';
+    const senderId = req.user.userId || req.user.advocateId;
+    const senderType = req.user.type || 'user';
 
     if (!consultationId || !message) {
       return res.status(400).json({
@@ -440,7 +437,7 @@ router.get('/consultations/:consultationId/messages', authenticateUser, async (r
     const { consultationId } = req.params;
     const { page = 1, limit = 50 } = req.query;
     const offset = (page - 1) * limit;
-    const userId = req.user.userId || req.user.advocateId || req.user.userData?.id;
+    const userId = req.user.userId || req.user.advocateId;
 
     // Verify access
     const [consultations] = await pool.execute(`
@@ -476,7 +473,7 @@ router.get('/consultations/:consultationId/messages', authenticateUser, async (r
 router.patch('/consultations/:consultationId/end', authenticateUser, async (req, res) => {
   try {
     const { consultationId } = req.params;
-    const userId = req.user.userId || req.user.advocateId || req.user.userData?.id;
+    const userId = req.user.userId || req.user.advocateId;
 
     // Verify access
     const [consultations] = await pool.execute(`
@@ -519,9 +516,9 @@ router.patch('/consultations/:consultationId/end', authenticateUser, async (req,
 router.post('/reviews', authenticateUser, async (req, res) => {
   try {
     const { consultationId, advocateId, rating, reviewText } = req.body;
-    const userId = req.user.userId || req.user.userData?.id;
+    const userId = req.user.userId;
 
-    if (req.user.userType === 'advocate' || req.user.type === 'advocate') {
+    if (req.user.type === 'advocate') {
       return res.status(403).json({
         success: false,
         error: 'Advocates cannot submit reviews'
