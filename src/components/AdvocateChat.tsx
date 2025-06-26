@@ -85,7 +85,6 @@ const AdvocateChat: React.FC = () => {
     isOnline: false
   });
   const [searchTerm, setSearchTerm] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const specializations = [
     'Criminal Law', 'Civil Law', 'Corporate Law', 'Family Law',
@@ -178,14 +177,6 @@ const AdvocateChat: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [activeConsultation]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
 
   const fetchAdvocates = async () => {
     if (!authReady || !currentUser) {
@@ -810,7 +801,6 @@ const AdvocateChat: React.FC = () => {
             </div>
           ))
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Message Input */}
