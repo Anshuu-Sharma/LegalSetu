@@ -12,6 +12,7 @@ import AboutUs from './components/AboutUs.tsx';
 import Advocate from './components/Advocate.tsx';
 import AdvocateRegistration from './components/AdvocateRegistration';
 import AdvocateChat from './components/AdvocateChat';
+import AdvocatePortal from './components/AdvocatePortal';
 import { TranslationProvider } from './contexts/TranslationContext';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -66,6 +67,8 @@ const App: React.FC = () => {
       setActiveSection('home');
     } else if (section === 'advocate-registration') {
       setActiveSection('advocate-registration');
+    } else if (section === 'advocate-portal') {
+      setActiveSection('advocate-portal');
     } else if (section === 'advocate-chat') {
       requireAuth(() => setActiveSection('advocate-chat'));
     } else {
@@ -128,6 +131,7 @@ const App: React.FC = () => {
             {activeSection === 'advocate' && <Advocate/>}
             {activeSection === 'advocate-registration' && <AdvocateRegistration />}
             {activeSection === 'advocate-chat' && <AdvocateChat />}
+            {activeSection === 'advocate-portal' && <AdvocatePortal />}
             {activeSection === 'easter' && <EasterEgg />}
           </main>
 

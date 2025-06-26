@@ -9,7 +9,7 @@ const languages = [
   { code: 'hi', name: 'हिन्दी' },
   { code: 'bn', name: 'বাংলা' },
   { code: 'te', name: 'తెలుగు' },
-  { code: 'ta', name: 'தமিழ்' },
+  { code: 'ta', name: 'தমিழ்' },
   { code: 'mr', name: 'मराठी' },
   { code: 'gu', name: 'ગુજરાતી' },
   { code: 'kn', name: 'ಕನ್ನಡ' },
@@ -70,7 +70,8 @@ const Header: React.FC<HeaderProps> = ({
     { name: 'Form Assistant', id: 'forms' },
     { name: 'Chat with Advocates', id: 'advocate-chat' },
     { name: 'About Us', id: 'about_us' },
-    { name: 'Advocate', id: 'advocate' }
+    { name: 'Advocate', id: 'advocate' },
+    { name: 'Advocate Portal', id: 'advocate-portal' }
   ];
 
   const getUserLabel = () =>
