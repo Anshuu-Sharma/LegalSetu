@@ -8,7 +8,7 @@ const { GetObjectCommand } = require('@aws-sdk/client-s3');
 
 const router = express.Router();
 
-// Simple authentication middleware specifically for advocate chat
+// Enhanced authentication middleware for production
 const authenticateUser = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -142,7 +142,7 @@ const authenticateUser = async (req, res, next) => {
   }
 };
 
-// ✅ FIXED: Helper function to safely parse JSON with better error handling
+// Helper function to safely parse JSON with better error handling
 const safeJsonParse = (jsonString, fallback = []) => {
   if (!jsonString || jsonString === null || jsonString === undefined || jsonString === '') {
     return fallback;
@@ -180,7 +180,7 @@ const safeJsonParse = (jsonString, fallback = []) => {
   return fallback;
 };
 
-// ✅ FIXED: Helper function to generate pre-signed URLs for S3 objects with proper URL decoding
+// Helper function to generate pre-signed URLs for S3 objects with proper URL decoding
 const generatePresignedUrl = async (s3Url) => {
   if (!s3Url || !s3Url.includes('amazonaws.com')) {
     return s3Url; // Return as-is if not an S3 URL
@@ -192,7 +192,7 @@ const generatePresignedUrl = async (s3Url) => {
     const pathParts = url.pathname.substring(1).split('/');
     const bucket = process.env.AWS_S3_BUCKET_NAME;
     
-    // ✅ CRITICAL FIX: Decode URL-encoded characters in the key
+    // Decode URL-encoded characters in the key
     const key = decodeURIComponent(pathParts.join('/'));
     
     console.log('🔗 Generating pre-signed URL for:', { bucket, key, originalUrl: s3Url });
@@ -210,7 +210,7 @@ const generatePresignedUrl = async (s3Url) => {
   }
 };
 
-// Get available advocates
+// Get available advocates with real-time status
 router.get('/advocates', authenticateUser, async (req, res) => {
   try {
     const { specialization, language, minRating, maxFee, isOnline } = req.query;
@@ -222,12 +222,12 @@ router.get('/advocates', authenticateUser, async (req, res) => {
       SELECT 
         id, full_name, specializations, languages, experience,
         consultation_fee, rating, total_consultations, is_online,
-        profile_photo_url, bio, city, state, last_seen
+        profile_photo_url, bio, city, state, last_seen, created_at
       FROM advocates 
       WHERE status = ?
     `;
     
-    const params = ['approved']; // ✅ FIXED: Use parameterized query instead of string literal
+    const params = ['approved'];
 
     if (specialization) {
       query += ` AND JSON_CONTAINS(specializations, ?)`;
@@ -262,7 +262,7 @@ router.get('/advocates', authenticateUser, async (req, res) => {
 
     console.log(`✅ Found ${advocates.length} advocates`);
 
-    // ✅ FIXED: Safely parse JSON fields for each advocate with better error handling + Pre-signed URLs
+    // Safely parse JSON fields for each advocate with better error handling + Pre-signed URLs
     const formattedAdvocates = await Promise.all(advocates.map(async (advocate) => {
       try {
         // Generate pre-signed URL for profile photo
@@ -274,9 +274,7 @@ router.get('/advocates', authenticateUser, async (req, res) => {
           ...advocate,
           specializations: safeJsonParse(advocate.specializations, []),
           languages: safeJsonParse(advocate.languages, []),
-          // ✅ Use pre-signed URL for profile photo
           profile_photo_url: profilePhotoUrl,
-          // ✅ Ensure numeric fields are properly formatted
           rating: advocate.rating ? parseFloat(advocate.rating) : 0,
           consultation_fee: advocate.consultation_fee ? parseFloat(advocate.consultation_fee) : 0,
           total_consultations: advocate.total_consultations ? parseInt(advocate.total_consultations) : 0,
@@ -324,7 +322,7 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
         last_seen, created_at
       FROM advocates 
       WHERE id = ? AND status = ?
-    `, [advocateId, 'approved']); // ✅ FIXED: Use parameterized query
+    `, [advocateId, 'approved']);
 
     if (advocates.length === 0) {
       return res.status(404).json({ success: false, error: 'Advocate not found' });
@@ -332,7 +330,7 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
 
     const advocate = advocates[0];
 
-    // ✅ FIXED: Get recent reviews with proper column aliasing to avoid ambiguity
+    // Get recent reviews with proper column aliasing to avoid ambiguity
     const [reviews] = await pool.execute(`
       SELECT 
         ar.rating, 
@@ -346,7 +344,7 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
       LIMIT 5
     `, [advocateId]);
 
-    // ✅ Generate pre-signed URLs for profile photo and documents
+    // Generate pre-signed URLs for profile photo and documents
     const profilePhotoUrl = advocate.profile_photo_url 
       ? await generatePresignedUrl(advocate.profile_photo_url)
       : null;
@@ -363,8 +361,7 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
         specializations: safeJsonParse(advocate.specializations, []),
         languages: safeJsonParse(advocate.languages, []),
         courts_practicing: safeJsonParse(advocate.courts_practicing, []),
-        document_urls: presignedDocumentUrls, // ✅ Pre-signed URLs for documents
-        // ✅ Pre-signed URL for profile photo
+        document_urls: presignedDocumentUrls,
         profile_photo_url: profilePhotoUrl,
         reviews
       }
@@ -378,50 +375,7 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
   }
 });
 
-// Get advocate reviews
-router.get('/advocates/:advocateId/reviews', authenticateUser, async (req, res) => {
-  try {
-    const { advocateId } = req.params;
-    const { page = 1, limit = 10 } = req.query;
-    
-    // ✅ CRITICAL FIX: Ensure parameters are integers and handle them properly
-    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
-    const limitNum = Math.min(50, Math.max(1, parseInt(String(limit), 10) || 10));
-    const offset = (pageNum - 1) * limitNum;
-
-    console.log('📊 Reviews query params:', { advocateId, pageNum, limitNum, offset });
-
-    // ✅ FIXED: Use proper column aliasing to avoid ambiguity
-    const [reviews] = await pool.execute(`
-      SELECT 
-        ar.rating, 
-        ar.review_text, 
-        ar.created_at as review_date,
-        u.name as user_name
-      FROM advocate_reviews ar
-      JOIN users u ON ar.user_id = u.id
-      WHERE ar.advocate_id = ?
-      ORDER BY ar.created_at DESC
-      LIMIT ? OFFSET ?
-    `, [advocateId, limitNum, offset]);
-
-    return res.json({
-      success: true,
-      reviews: reviews.map(review => ({
-        ...review,
-        created_at: review.review_date // Map back to expected field name
-      }))
-    });
-  } catch (error) {
-    console.error('Get advocate reviews error:', error);
-    return res.status(500).json({ 
-      success: false, 
-      error: 'Failed to get reviews: ' + error.message 
-    });
-  }
-});
-
-// Start consultation
+// Start consultation with real-time notification
 router.post('/consultations/start', authenticateUser, async (req, res) => {
   try {
     const { advocateId, consultationType = 'chat' } = req.body;
@@ -443,10 +397,10 @@ router.post('/consultations/start', authenticateUser, async (req, res) => {
       });
     }
 
-    // ✅ FIXED: Check if advocate is available using parameterized query
+    // Check if advocate is available
     const [advocates] = await pool.execute(
       'SELECT * FROM advocates WHERE id = ? AND status = ?',
-      [advocateId, 'approved'] // ✅ FIXED: Use parameterized query instead of string literal
+      [advocateId, 'approved']
     );
 
     if (advocates.length === 0) {
@@ -489,6 +443,20 @@ router.post('/consultations/start', authenticateUser, async (req, res) => {
 
     console.log('✅ Consultation created with ID:', consultationId);
 
+    // Emit real-time notification to advocate
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`advocate-${advocateId}`).emit('new-consultation', {
+        consultationId,
+        userId,
+        userName: req.user.name,
+        userEmail: req.user.email,
+        consultationType,
+        feeAmount: advocate.consultation_fee,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     return res.json({
       success: true,
       consultation: {
@@ -509,66 +477,7 @@ router.post('/consultations/start', authenticateUser, async (req, res) => {
   }
 });
 
-// Get user's consultations
-router.get('/consultations', authenticateUser, async (req, res) => {
-  try {
-    const userId = req.user.userId || req.user.advocateId;
-    const userType = req.user.type || 'user';
-
-    let query, params;
-
-    if (userType === 'advocate') {
-      query = `
-        SELECT 
-          c.*, u.name as user_name, u.email as user_email,
-          cr.id as chat_room_id, cr.last_message, cr.last_message_time
-        FROM consultations c
-        JOIN users u ON c.user_id = u.id
-        LEFT JOIN chat_rooms cr ON c.id = cr.consultation_id
-        WHERE c.advocate_id = ?
-        ORDER BY c.created_at DESC
-      `;
-      params = [userId];
-    } else {
-      query = `
-        SELECT 
-          c.*, a.full_name as advocate_name, a.profile_photo_url,
-          cr.id as chat_room_id, cr.last_message, cr.last_message_time
-        FROM consultations c
-        JOIN advocates a ON c.advocate_id = a.id
-        LEFT JOIN chat_rooms cr ON c.id = cr.consultation_id
-        WHERE c.user_id = ?
-        ORDER BY c.created_at DESC
-      `;
-      params = [userId];
-    }
-
-    const [consultations] = await pool.execute(query, params);
-
-    // ✅ Generate pre-signed URLs for advocate profile photos in consultations
-    const consultationsWithPresignedUrls = await Promise.all(
-      consultations.map(async (consultation) => {
-        if (consultation.profile_photo_url) {
-          consultation.profile_photo_url = await generatePresignedUrl(consultation.profile_photo_url);
-        }
-        return consultation;
-      })
-    );
-
-    return res.json({
-      success: true,
-      consultations: consultationsWithPresignedUrls
-    });
-  } catch (error) {
-    console.error('Get consultations error:', error);
-    return res.status(500).json({ 
-      success: false, 
-      error: 'Failed to get consultations: ' + error.message 
-    });
-  }
-});
-
-// Send message
+// Send message with real-time delivery
 router.post('/messages', authenticateUser, async (req, res) => {
   try {
     const { consultationId, message, messageType = 'text' } = req.body;
@@ -618,6 +527,24 @@ router.post('/messages', authenticateUser, async (req, res) => {
 
     console.log('✅ Chat room updated');
 
+    // Emit real-time message to other party
+    const io = req.app.get('io');
+    if (io) {
+      const consultation = consultations[0];
+      const targetId = senderType === 'user' ? consultation.advocate_id : consultation.user_id;
+      const targetType = senderType === 'user' ? 'advocate' : 'user';
+      
+      io.to(`${targetType}-${targetId}`).emit('new-message', {
+        id: result.insertId,
+        consultationId,
+        senderId,
+        senderType,
+        message,
+        messageType,
+        timestamp: new Date().toISOString()
+      });
+    }
+
     return res.json({
       success: true,
       message: {
@@ -639,7 +566,7 @@ router.post('/messages', authenticateUser, async (req, res) => {
   }
 });
 
-// ✅ CRITICAL FIX: Get messages for consultation with proper parameter handling
+// Get messages for consultation with proper parameter handling
 router.get('/consultations/:consultationId/messages', authenticateUser, async (req, res) => {
   try {
     const { consultationId } = req.params;
@@ -648,7 +575,7 @@ router.get('/consultations/:consultationId/messages', authenticateUser, async (r
 
     console.log('📨 Fetching messages for consultation:', { consultationId, userId, page, limit });
 
-    // ✅ CRITICAL FIX: Ensure parameters are properly converted to integers and validated
+    // Ensure parameters are properly converted to integers and validated
     let pageNum = parseInt(String(page), 10);
     let limitNum = parseInt(String(limit), 10);
     
@@ -677,8 +604,7 @@ router.get('/consultations/:consultationId/messages', authenticateUser, async (r
 
     console.log('✅ Consultation access verified');
 
-    // ✅ CRITICAL FIX: Use proper integer parameters for LIMIT and OFFSET
-    // Convert to string first to ensure MySQL gets the right type
+    // Use proper integer parameters for LIMIT and OFFSET
     const [messages] = await pool.execute(`
       SELECT * FROM chat_messages 
       WHERE consultation_id = ?
@@ -697,6 +623,106 @@ router.get('/consultations/:consultationId/messages', authenticateUser, async (r
     return res.status(500).json({ 
       success: false, 
       error: 'Failed to get messages: ' + error.message 
+    });
+  }
+});
+
+// Get user's consultations
+router.get('/consultations', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user.userId || req.user.advocateId;
+    const userType = req.user.type || 'user';
+
+    let query, params;
+
+    if (userType === 'advocate') {
+      query = `
+        SELECT 
+          c.*, u.name as user_name, u.email as user_email,
+          cr.id as chat_room_id, cr.last_message, cr.last_message_time
+        FROM consultations c
+        JOIN users u ON c.user_id = u.id
+        LEFT JOIN chat_rooms cr ON c.id = cr.consultation_id
+        WHERE c.advocate_id = ?
+        ORDER BY c.created_at DESC
+      `;
+      params = [userId];
+    } else {
+      query = `
+        SELECT 
+          c.*, a.full_name as advocate_name, a.profile_photo_url,
+          cr.id as chat_room_id, cr.last_message, cr.last_message_time
+        FROM consultations c
+        JOIN advocates a ON c.advocate_id = a.id
+        LEFT JOIN chat_rooms cr ON c.id = cr.consultation_id
+        WHERE c.user_id = ?
+        ORDER BY c.created_at DESC
+      `;
+      params = [userId];
+    }
+
+    const [consultations] = await pool.execute(query, params);
+
+    // Generate pre-signed URLs for advocate profile photos in consultations
+    const consultationsWithPresignedUrls = await Promise.all(
+      consultations.map(async (consultation) => {
+        if (consultation.profile_photo_url) {
+          consultation.profile_photo_url = await generatePresignedUrl(consultation.profile_photo_url);
+        }
+        return consultation;
+      })
+    );
+
+    return res.json({
+      success: true,
+      consultations: consultationsWithPresignedUrls
+    });
+  } catch (error) {
+    console.error('Get consultations error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to get consultations: ' + error.message 
+    });
+  }
+});
+
+// Update advocate online status
+router.patch('/advocates/status', authenticateUser, async (req, res) => {
+  try {
+    const { isOnline } = req.body;
+    const advocateId = req.user.advocateId;
+
+    if (req.user.type !== 'advocate') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only advocates can update their status'
+      });
+    }
+
+    await pool.execute(
+      'UPDATE advocates SET is_online = ?, last_seen = CURRENT_TIMESTAMP WHERE id = ?',
+      [isOnline, advocateId]
+    );
+
+    // Emit real-time status update
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('advocate-status-update', {
+        advocateId,
+        isOnline,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Status updated successfully'
+    });
+  } catch (error) {
+    console.error('Update advocate status error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to update status: ' + error.message 
     });
   }
 });
@@ -733,6 +759,20 @@ router.patch('/consultations/:consultationId/end', authenticateUser, async (req,
       SET status = 'closed'
       WHERE consultation_id = ?
     `, [consultationId]);
+
+    // Emit real-time notification
+    const io = req.app.get('io');
+    if (io) {
+      const consultation = consultations[0];
+      const targetId = req.user.type === 'user' ? consultation.advocate_id : consultation.user_id;
+      const targetType = req.user.type === 'user' ? 'advocate' : 'user';
+      
+      io.to(`${targetType}-${targetId}`).emit('consultation-ended', {
+        consultationId,
+        endedBy: req.user.type,
+        timestamp: new Date().toISOString()
+      });
+    }
 
     return res.json({
       success: true,

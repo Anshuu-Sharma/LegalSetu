@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Filter, Star, MapPin, Clock, MessageCircle,
   Phone, Video, User, Send, ArrowLeft, MoreVertical,
-  CheckCircle, Circle, Heart, Shield, RefreshCw, AlertCircle
+  CheckCircle, Circle, Heart, Shield, RefreshCw, AlertCircle,
+  Wifi, WifiOff
 } from 'lucide-react';
 import LocalizedText from './LocalizedText';
 import ChatHeader from './ChatHeader';
 import AdvocateProfileModal from './AdvocateProfileModal';
 import { auth } from '../firebase';
+import { io, Socket } from 'socket.io-client';
 
 interface Advocate {
   id: number;
@@ -77,6 +79,8 @@ const AdvocateChat: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileAdvocate, setProfileAdvocate] = useState<Advocate | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState({
     specialization: '',
     language: '',
@@ -86,6 +90,8 @@ const AdvocateChat: React.FC = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const specializations = [
     'Criminal Law', 'Civil Law', 'Corporate Law', 'Family Law',
@@ -113,7 +119,7 @@ const AdvocateChat: React.FC = () => {
     return Number(value);
   };
 
-  // ✅ NEW: Safe image component with error handling
+  // Safe image component with error handling
   const SafeImage: React.FC<{
     src?: string | null;
     alt: string;
@@ -158,6 +164,98 @@ const AdvocateChat: React.FC = () => {
       </div>
     );
   };
+
+  // Initialize Socket.IO connection
+  useEffect(() => {
+    if (authReady && currentUser) {
+      console.log('🔌 Initializing Socket.IO connection...');
+      
+      const socket = io(import.meta.env.VITE_API_URL, {
+        transports: ['websocket', 'polling'],
+        timeout: 20000,
+      });
+
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        console.log('✅ Socket.IO connected');
+        setIsConnected(true);
+        
+        // Join user room for real-time notifications
+        socket.emit('join-room', {
+          userId: currentUser.uid,
+          userType: 'user'
+        });
+      });
+
+      socket.on('disconnect', () => {
+        console.log('❌ Socket.IO disconnected');
+        setIsConnected(false);
+      });
+
+      // Listen for real-time advocate status updates
+      socket.on('advocate-status-update', (data) => {
+        console.log('📡 Advocate status update:', data);
+        setAdvocates(prev => prev.map(advocate => 
+          advocate.id === data.advocateId 
+            ? { ...advocate, is_online: data.isOnline }
+            : advocate
+        ));
+      });
+
+      // Listen for new messages
+      socket.on('new-message', (data) => {
+        console.log('📨 New message received:', data);
+        if (activeConsultation && data.consultationId === activeConsultation.id) {
+          setMessages(prev => [...prev, {
+            id: data.id,
+            consultation_id: data.consultationId,
+            sender_id: data.senderId,
+            sender_type: data.senderType,
+            message: data.message,
+            message_type: data.messageType,
+            created_at: data.timestamp,
+            is_read: false
+          }]);
+        }
+      });
+
+      // Listen for typing indicators
+      socket.on('user-typing', (data) => {
+        setTypingUsers(prev => new Set([...prev, `${data.userType}-${data.userId}`]));
+      });
+
+      socket.on('user-stopped-typing', (data) => {
+        setTypingUsers(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(`${data.userType}-${data.userId}`);
+          return newSet;
+        });
+      });
+
+      // Listen for consultation ended
+      socket.on('consultation-ended', (data) => {
+        console.log('🔚 Consultation ended:', data);
+        if (activeConsultation && data.consultationId === activeConsultation.id) {
+          setActiveConsultation(prev => prev ? { ...prev, status: 'completed' } : null);
+        }
+      });
+
+      return () => {
+        console.log('🔌 Cleaning up Socket.IO connection');
+        socket.disconnect();
+        socketRef.current = null;
+      };
+    }
+  }, [authReady, currentUser, activeConsultation]);
+
+  // Join consultation room when active consultation changes
+  useEffect(() => {
+    if (socketRef.current && activeConsultation) {
+      console.log('🏠 Joining consultation room:', activeConsultation.id);
+      socketRef.current.emit('join-consultation', activeConsultation.id);
+    }
+  }, [activeConsultation]);
 
   // Get Firebase token for authentication
   const getAuthToken = async () => {
@@ -216,16 +314,6 @@ const AdvocateChat: React.FC = () => {
   }, [filters, authReady, currentUser]);
 
   useEffect(() => {
-    if (activeConsultation) {
-      fetchMessages(activeConsultation.id);
-      const interval = setInterval(() => {
-        fetchMessages(activeConsultation.id);
-      }, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [activeConsultation]);
-
-  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
@@ -270,7 +358,6 @@ const AdvocateChat: React.FC = () => {
         
         if (response.status === 401) {
           setAuthError('Authentication failed. Please refresh and login again.');
-          // Force re-authentication
           await auth.signOut();
           return;
         }
@@ -282,7 +369,6 @@ const AdvocateChat: React.FC = () => {
       console.log('📡 Response data:', data);
 
       if (data.success) {
-        // Safely process advocates data
         const processedAdvocates = data.advocates.map((advocate: any) => ({
           ...advocate,
           rating: safeNumber(advocate.rating, 0),
@@ -358,7 +444,7 @@ const AdvocateChat: React.FC = () => {
   const startConsultation = async (advocateId: number) => {
     console.log('🚀 Starting consultation with advocate:', advocateId);
     setLoading(true);
-    setError(''); // Clear any previous errors
+    setError('');
     
     try {
       const token = await getAuthToken();
@@ -385,10 +471,8 @@ const AdvocateChat: React.FC = () => {
       if (data.success && data.consultation) {
         console.log('✅ Consultation created successfully:', data.consultation);
         
-        // Refresh consultations to get the latest data
         await fetchConsultations();
         
-        // Create a consultation object for immediate use
         const newConsultation: Consultation = {
           id: data.consultation.id,
           advocate_id: data.consultation.advocateId,
@@ -397,15 +481,13 @@ const AdvocateChat: React.FC = () => {
           fee_amount: data.consultation.feeAmount,
           status: data.consultation.status,
           started_at: new Date().toISOString(),
-          chat_room_id: data.consultation.id, // Use consultation ID as room ID
+          chat_room_id: data.consultation.id,
           profile_photo_url: advocates.find(a => a.id === advocateId)?.profile_photo_url
         };
         
         console.log('🔄 Setting active consultation and switching to chat view...');
         setActiveConsultation(newConsultation);
         setView('chat');
-        
-        // Clear any messages from previous chats
         setMessages([]);
         
         console.log('✅ Successfully transitioned to chat view');
@@ -434,9 +516,18 @@ const AdvocateChat: React.FC = () => {
     console.log('📤 Sending message:', newMessage);
     setSendingMessage(true);
     
+    // Stop typing indicator
+    if (socketRef.current && activeConsultation) {
+      socketRef.current.emit('typing-stop', {
+        consultationId: activeConsultation.id,
+        userId: currentUser?.uid,
+        userType: 'user'
+      });
+    }
+    
     // Optimistically add the message to the UI
     const tempMessage: Message = {
-      id: Date.now(), // Temporary ID
+      id: Date.now(),
       consultation_id: activeConsultation.id,
       sender_id: currentUser?.uid || 0,
       sender_type: 'user',
@@ -448,15 +539,14 @@ const AdvocateChat: React.FC = () => {
     
     const messageToSend = newMessage;
     setMessages(prev => [...prev, tempMessage]);
-    setNewMessage(''); // Clear input immediately for better UX
+    setNewMessage('');
 
     try {
       const token = await getAuthToken();
       if (!token) {
         console.error('❌ No auth token available');
-        // Remove the optimistic message
         setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
-        setNewMessage(messageToSend); // Restore the message
+        setNewMessage(messageToSend);
         setSendingMessage(false);
         return;
       }
@@ -481,23 +571,19 @@ const AdvocateChat: React.FC = () => {
 
       if (data.success) {
         console.log('✅ Message sent successfully');
-        // Remove the temporary message and fetch fresh messages
         setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
         
-        // Fetch messages immediately to get the real message with proper ID
         setTimeout(() => {
           fetchMessages(activeConsultation.id);
         }, 100);
       } else {
         console.error('❌ Failed to send message:', data.error);
-        // Remove the optimistic message and restore input
         setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
         setNewMessage(messageToSend);
         setError('Failed to send message: ' + (data.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('❌ Error sending message:', error);
-      // Remove the optimistic message and restore input
       setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
       setNewMessage(messageToSend);
       setError('Network error while sending message');
@@ -513,12 +599,40 @@ const AdvocateChat: React.FC = () => {
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    
+    // Send typing indicator
+    if (socketRef.current && activeConsultation && e.target.value.trim()) {
+      socketRef.current.emit('typing-start', {
+        consultationId: activeConsultation.id,
+        userId: currentUser?.uid,
+        userType: 'user'
+      });
+      
+      // Clear previous timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Set new timeout to stop typing indicator
+      typingTimeoutRef.current = setTimeout(() => {
+        if (socketRef.current) {
+          socketRef.current.emit('typing-stop', {
+            consultationId: activeConsultation.id,
+            userId: currentUser?.uid,
+            userType: 'user'
+          });
+        }
+      }, 1000);
+    }
+  };
+
   const handleViewProfile = async (advocate: Advocate) => {
     try {
       const token = await getAuthToken();
       if (!token) return;
 
-      // Fetch complete advocate details
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/advocate-chat/advocates/${advocate.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -533,7 +647,6 @@ const AdvocateChat: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching advocate details:', error);
-      // Fallback to basic advocate data
       setProfileAdvocate(advocate);
       setShowProfileModal(true);
     }
@@ -562,7 +675,9 @@ const AdvocateChat: React.FC = () => {
             fallbackIcon={<User className="w-8 h-8 text-white" />}
           />
           {advocate.is_online && (
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full flex items-center justify-center">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            </div>
           )}
         </div>
 
@@ -644,6 +759,30 @@ const AdvocateChat: React.FC = () => {
 
   const renderAdvocateList = () => (
     <div className="space-y-6">
+      {/* Connection Status */}
+      <div className="flex items-center justify-between bg-white rounded-xl p-4 shadow-sm">
+        <div className="flex items-center space-x-2">
+          {isConnected ? (
+            <>
+              <Wifi className="w-5 h-5 text-green-600" />
+              <span className="text-sm font-medium text-green-700">
+                <LocalizedText text="Connected - Real-time updates active" />
+              </span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="w-5 h-5 text-red-600" />
+              <span className="text-sm font-medium text-red-700">
+                <LocalizedText text="Disconnected - Reconnecting..." />
+              </span>
+            </>
+          )}
+        </div>
+        <div className="text-sm text-gray-500">
+          {advocates.filter(a => a.is_online).length} advocates online
+        </div>
+      </div>
+
       {/* Search and Filters */}
       <div className="bg-white rounded-2xl shadow-lg p-6">
         <div className="flex flex-col lg:flex-row gap-4">
@@ -780,7 +919,7 @@ const AdvocateChat: React.FC = () => {
               setView('list');
               setActiveConsultation(null);
               setMessages([]);
-              setError(''); // Clear any errors when going back
+              setError('');
             }}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
@@ -794,7 +933,15 @@ const AdvocateChat: React.FC = () => {
           />
           <div>
             <h3 className="font-semibold text-gray-800">{activeConsultation?.advocate_name}</h3>
-            <p className="text-sm text-green-600">Online</p>
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></div>
+                <p className="text-sm text-green-600">Online</p>
+              </div>
+              {isConnected && (
+                <span className="text-xs text-gray-500">• Real-time</span>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -842,6 +989,20 @@ const AdvocateChat: React.FC = () => {
             </div>
           ))
         )}
+        
+        {/* Typing Indicator */}
+        {typingUsers.size > 0 && (
+          <div className="flex justify-start">
+            <div className="bg-gray-100 px-4 py-2 rounded-2xl">
+              <div className="flex space-x-1">
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-100"></div>
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-200"></div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div ref={messagesEndRef} />
       </div>
 
@@ -851,7 +1012,7 @@ const AdvocateChat: React.FC = () => {
           <input
             type="text"
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleInputChange}
             onKeyPress={handleKeyPress}
             placeholder="Type your message..."
             disabled={sendingMessage}
