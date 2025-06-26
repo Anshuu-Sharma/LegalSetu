@@ -1,4 +1,5 @@
 require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -159,51 +160,21 @@ app.patch('/admin/advocates/:advocateId/status', async (req, res) => {
   }
 });
 
-// ✅ Admin route to get all advocates with detailed info
-app.get('/admin/advocates', async (req, res) => {
-  try {
-    const { pool } = require('./src/config/database');
-    const [advocates] = await pool.execute(`
-      SELECT 
-        id, full_name, email, phone, bar_council_number, experience,
-        specializations, languages, consultation_fee, rating, 
-        total_consultations, is_online, status, city, state,
-        created_at, updated_at
-      FROM advocates 
-      ORDER BY created_at DESC
-    `);
-
-    const formattedAdvocates = advocates.map(advocate => ({
-      ...advocate,
-      specializations: JSON.parse(advocate.specializations || '[]'),
-      languages: JSON.parse(advocate.languages || '[]')
-    }));
-
-    res.json({
-      success: true,
-      count: advocates.length,
-      advocates: formattedAdvocates
-    });
-  } catch (error) {
-    console.error('❌ Admin get advocates error:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// ✅ ENHANCED Bulk approve all pending advocates
+// ✅ FIXED Bulk approve all pending advocates
 app.post('/admin/advocates/approve-all', async (req, res) => {
   try {
     const { pool } = require('./src/config/database');
     
-    // Get all pending advocates
+    console.log('🔄 Starting bulk approval process...');
+    
+    // Get all pending advocates - FIXED QUERY
     const [pending] = await pool.execute(
-      'SELECT id, full_name, email FROM advocates WHERE status = "pending"'
+      'SELECT id, full_name, email FROM advocates WHERE status = ?',
+      ['pending']  // ✅ Fixed: Use parameterized query instead of string literal
     );
 
     if (pending.length === 0) {
+      console.log('ℹ️ No pending advocates found');
       return res.json({
         success: true,
         message: 'No pending advocates to approve',
@@ -216,9 +187,10 @@ app.post('/admin/advocates/approve-all', async (req, res) => {
       console.log(`   - ${advocate.full_name} (${advocate.email}) - ID: ${advocate.id}`);
     });
 
-    // Approve all pending advocates
+    // Approve all pending advocates - FIXED QUERY
     const [result] = await pool.execute(
-      'UPDATE advocates SET status = "approved", updated_at = CURRENT_TIMESTAMP WHERE status = "pending"'
+      'UPDATE advocates SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE status = ?',
+      ['approved', 'pending']  // ✅ Fixed: Use parameterized query
     );
 
     console.log(`✅ Bulk approved ${result.affectedRows} advocates`);
@@ -263,8 +235,8 @@ app.post('/admin/advocates/:advocateId/approve', async (req, res) => {
 
     // Update to approved
     const [result] = await pool.execute(
-      'UPDATE advocates SET status = "approved", updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [advocateId]
+      'UPDATE advocates SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      ['approved', advocateId]
     );
 
     if (result.affectedRows === 0) {
@@ -288,6 +260,40 @@ app.post('/admin/advocates/:advocateId/approve', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Quick approve error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ✅ Admin route to get all advocates with detailed info
+app.get('/admin/advocates', async (req, res) => {
+  try {
+    const { pool } = require('./src/config/database');
+    const [advocates] = await pool.execute(`
+      SELECT 
+        id, full_name, email, phone, bar_council_number, experience,
+        specializations, languages, consultation_fee, rating, 
+        total_consultations, is_online, status, city, state,
+        created_at, updated_at
+      FROM advocates 
+      ORDER BY created_at DESC
+    `);
+
+    const formattedAdvocates = advocates.map(advocate => ({
+      ...advocate,
+      specializations: JSON.parse(advocate.specializations || '[]'),
+      languages: JSON.parse(advocate.languages || '[]')
+    }));
+
+    res.json({
+      success: true,
+      count: advocates.length,
+      advocates: formattedAdvocates
+    });
+  } catch (error) {
+    console.error('❌ Admin get advocates error:', error);
     res.status(500).json({
       success: false,
       error: error.message
