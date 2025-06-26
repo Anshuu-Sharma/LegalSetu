@@ -38,41 +38,80 @@ const upload = multer({
   }
 });
 
-// ✅ FIXED: Helper function to safely parse JSON with better error handling
+// ✅ ENHANCED: Helper function to safely parse JSON with comprehensive error handling
 const safeJsonParse = (jsonString, fallback = []) => {
+  // Handle null, undefined, or empty values
   if (!jsonString || jsonString === null || jsonString === undefined || jsonString === '') {
+    console.log('🔄 Empty or null JSON string, returning fallback:', fallback);
     return fallback;
   }
   
   // If it's already an array, return it
   if (Array.isArray(jsonString)) {
+    console.log('✅ Already an array:', jsonString);
     return jsonString;
   }
   
-  // If it's a string that looks like a comma-separated list, parse it
+  // If it's a string, try to parse it
   if (typeof jsonString === 'string') {
-    // Check if it's already JSON
-    if (jsonString.startsWith('[') && jsonString.endsWith(']')) {
+    const trimmed = jsonString.trim();
+    
+    // Handle empty string after trimming
+    if (trimmed === '') {
+      console.log('🔄 Empty string after trim, returning fallback:', fallback);
+      return fallback;
+    }
+    
+    // Check if it's already valid JSON array
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
       try {
-        const parsed = JSON.parse(jsonString);
-        return Array.isArray(parsed) ? parsed : fallback;
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          console.log('✅ Successfully parsed JSON array:', parsed);
+          return parsed;
+        } else {
+          console.warn('⚠️ Parsed JSON is not an array:', parsed);
+          return fallback;
+        }
       } catch (error) {
-        console.warn('⚠️ Failed to parse JSON array:', jsonString, 'Error:', error.message);
+        console.warn('⚠️ Failed to parse JSON array:', trimmed, 'Error:', error.message);
+        // Try to extract content between brackets and split by comma
+        const content = trimmed.slice(1, -1).trim();
+        if (content) {
+          return content.split(',').map(item => item.trim().replace(/^["']|["']$/g, '')).filter(item => item.length > 0);
+        }
         return fallback;
       }
     }
     
-    // If it's a comma-separated string, split it
-    if (jsonString.includes(',')) {
-      return jsonString.split(',').map(item => item.trim()).filter(item => item.length > 0);
+    // Check if it's a JSON object (shouldn't happen for arrays, but handle gracefully)
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      console.warn('⚠️ Found JSON object instead of array:', trimmed);
+      return fallback;
     }
     
-    // If it's a single item, return as array
-    if (jsonString.trim().length > 0) {
-      return [jsonString.trim()];
+    // Handle comma-separated string
+    if (trimmed.includes(',')) {
+      const items = trimmed.split(',').map(item => item.trim().replace(/^["']|["']$/g, '')).filter(item => item.length > 0);
+      console.log('✅ Parsed comma-separated string:', items);
+      return items;
+    }
+    
+    // Handle single item
+    if (trimmed.length > 0) {
+      const cleaned = trimmed.replace(/^["']|["']$/g, '');
+      console.log('✅ Single item converted to array:', [cleaned]);
+      return [cleaned];
     }
   }
   
+  // Handle other data types
+  if (typeof jsonString === 'number') {
+    console.log('🔄 Number converted to string array:', [jsonString.toString()]);
+    return [jsonString.toString()];
+  }
+  
+  console.warn('⚠️ Unhandled data type, returning fallback:', typeof jsonString, jsonString);
   return fallback;
 };
 
@@ -153,7 +192,7 @@ router.post('/register', (req, res) => {
         : null;
       const documentUrls = req.files?.documents?.map(file => `/uploads/advocates/${file.filename}`) || [];
 
-      // ✅ FIXED: Properly parse arrays from strings and convert to JSON
+      // ✅ ENHANCED: Properly parse arrays from strings and convert to JSON
       const specializationsArray = specializations 
         ? (typeof specializations === 'string' 
             ? specializations.split(',').map(s => s.trim()).filter(s => s.length > 0)
@@ -231,7 +270,7 @@ router.post('/register', (req, res) => {
   });
 });
 
-// ✅ FIXED: Advocate Login with proper JSON parsing
+// ✅ CRITICAL FIX: Advocate Login with comprehensive JSON parsing and error handling
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -261,6 +300,8 @@ router.post('/login', async (req, res) => {
 
     const advocate = advocates[0];
     console.log('🔍 Found advocate:', advocate.full_name, 'Status:', advocate.status);
+    console.log('🔍 Raw specializations from DB:', advocate.specializations);
+    console.log('🔍 Raw languages from DB:', advocate.languages);
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, advocate.password);
@@ -294,17 +335,36 @@ router.post('/login', async (req, res) => {
 
     console.log('✅ Advocate login successful:', advocate.full_name);
 
-    // ✅ FIXED: Safely parse JSON fields with proper error handling
+    // ✅ CRITICAL FIX: Safely parse JSON fields with comprehensive error handling
+    let parsedSpecializations = [];
+    let parsedLanguages = [];
+    
+    try {
+      parsedSpecializations = safeJsonParse(advocate.specializations, []);
+      console.log('✅ Parsed specializations:', parsedSpecializations);
+    } catch (error) {
+      console.error('❌ Error parsing specializations:', error);
+      parsedSpecializations = [];
+    }
+    
+    try {
+      parsedLanguages = safeJsonParse(advocate.languages, []);
+      console.log('✅ Parsed languages:', parsedLanguages);
+    } catch (error) {
+      console.error('❌ Error parsing languages:', error);
+      parsedLanguages = [];
+    }
+
     const advocateResponse = {
       id: advocate.id,
       fullName: advocate.full_name,
       email: advocate.email,
       phone: advocate.phone,
-      specializations: safeJsonParse(advocate.specializations, []),
-      languages: safeJsonParse(advocate.languages, []),
+      specializations: parsedSpecializations,
+      languages: parsedLanguages,
       consultationFee: advocate.consultation_fee,
-      rating: advocate.rating,
-      totalConsultations: advocate.total_consultations,
+      rating: advocate.rating || 0,
+      totalConsultations: advocate.total_consultations || 0,
       isOnline: true,
       profilePhotoUrl: advocate.profile_photo_url,
       status: advocate.status
@@ -314,7 +374,9 @@ router.post('/login', async (req, res) => {
       id: advocateResponse.id,
       fullName: advocateResponse.fullName,
       specializationsCount: advocateResponse.specializations.length,
-      languagesCount: advocateResponse.languages.length
+      languagesCount: advocateResponse.languages.length,
+      specializations: advocateResponse.specializations,
+      languages: advocateResponse.languages
     });
 
     res.json({
