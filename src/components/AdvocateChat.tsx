@@ -69,6 +69,7 @@ const AdvocateChat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
   const [advocatesLoading, setAdvocatesLoading] = useState(true);
   const [error, setError] = useState('');
   const [authError, setAuthError] = useState('');
@@ -303,9 +304,12 @@ const AdvocateChat: React.FC = () => {
       const data = await response.json();
       if (data.success) {
         setMessages(data.messages);
+        console.log('📨 Messages loaded:', data.messages.length);
+      } else {
+        console.error('❌ Failed to fetch messages:', data.error);
       }
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error('❌ Error fetching messages:', error);
     }
   };
 
@@ -376,12 +380,46 @@ const AdvocateChat: React.FC = () => {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !activeConsultation) return;
+    if (!newMessage.trim() || !activeConsultation || sendingMessage) {
+      console.log('❌ Cannot send message:', { 
+        hasMessage: !!newMessage.trim(), 
+        hasConsultation: !!activeConsultation, 
+        isSending: sendingMessage 
+      });
+      return;
+    }
+
+    console.log('📤 Sending message:', newMessage);
+    setSendingMessage(true);
+    
+    // Optimistically add the message to the UI
+    const tempMessage: Message = {
+      id: Date.now(), // Temporary ID
+      consultation_id: activeConsultation.id,
+      sender_id: currentUser?.uid || 0,
+      sender_type: 'user',
+      message: newMessage,
+      message_type: 'text',
+      created_at: new Date().toISOString(),
+      is_read: false
+    };
+    
+    const messageToSend = newMessage;
+    setMessages(prev => [...prev, tempMessage]);
+    setNewMessage(''); // Clear input immediately for better UX
 
     try {
       const token = await getAuthToken();
-      if (!token) return;
+      if (!token) {
+        console.error('❌ No auth token available');
+        // Remove the optimistic message
+        setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+        setNewMessage(messageToSend); // Restore the message
+        setSendingMessage(false);
+        return;
+      }
 
+      console.log('📡 Sending message to API...');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/advocate-chat/messages`, {
         method: 'POST',
         headers: {
@@ -390,18 +428,46 @@ const AdvocateChat: React.FC = () => {
         },
         body: JSON.stringify({
           consultationId: activeConsultation.id,
-          message: newMessage,
+          message: messageToSend,
           messageType: 'text'
         })
       });
 
+      console.log('📡 Message response status:', response.status);
       const data = await response.json();
+      console.log('📡 Message response data:', data);
+
       if (data.success) {
-        setNewMessage('');
-        fetchMessages(activeConsultation.id);
+        console.log('✅ Message sent successfully');
+        // Remove the temporary message and fetch fresh messages
+        setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+        
+        // Fetch messages immediately to get the real message with proper ID
+        setTimeout(() => {
+          fetchMessages(activeConsultation.id);
+        }, 100);
+      } else {
+        console.error('❌ Failed to send message:', data.error);
+        // Remove the optimistic message and restore input
+        setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+        setNewMessage(messageToSend);
+        setError('Failed to send message: ' + (data.error || 'Unknown error'));
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('❌ Error sending message:', error);
+      // Remove the optimistic message and restore input
+      setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+      setNewMessage(messageToSend);
+      setError('Network error while sending message');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
   };
 
@@ -604,6 +670,12 @@ const AdvocateChat: React.FC = () => {
           <div className="flex items-center">
             <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
             <span className="text-red-700">{error}</span>
+            <button
+              onClick={() => setError('')}
+              className="ml-auto text-red-600 hover:text-red-800"
+            >
+              ×
+            </button>
           </div>
         </div>
       )}
@@ -671,6 +743,7 @@ const AdvocateChat: React.FC = () => {
               setView('list');
               setActiveConsultation(null);
               setMessages([]);
+              setError(''); // Clear any errors when going back
             }}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
@@ -747,16 +820,21 @@ const AdvocateChat: React.FC = () => {
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+            onKeyPress={handleKeyPress}
             placeholder="Type your message..."
-            className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500"
+            disabled={sendingMessage}
+            className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           />
           <button
             onClick={sendMessage}
-            disabled={!newMessage.trim()}
-            className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+            disabled={!newMessage.trim() || sendingMessage}
+            className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Send className="w-5 h-5" />
+            {sendingMessage ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
           </button>
         </div>
       </div>
