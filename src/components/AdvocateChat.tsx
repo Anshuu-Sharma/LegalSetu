@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import LocalizedText from './LocalizedText';
 import ChatHeader from './ChatHeader';
+import { auth } from '../firebase';
 
 interface Advocate {
   id: number;
@@ -81,6 +82,23 @@ const AdvocateChat: React.FC = () => {
     'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Urdu'
   ];
 
+  // Get Firebase token for authentication
+  const getAuthToken = async () => {
+    try {
+      if (auth.currentUser) {
+        const token = await auth.currentUser.getIdToken();
+        console.log('🔑 Firebase token obtained');
+        return token;
+      } else {
+        console.log('❌ No Firebase user found');
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Error getting Firebase token:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     fetchAdvocates();
     fetchConsultations();
@@ -109,32 +127,39 @@ const AdvocateChat: React.FC = () => {
       setAdvocatesLoading(true);
       setError('');
       
+      const token = await getAuthToken();
+      if (!token) {
+        setError('Authentication required. Please login first.');
+        return;
+      }
+
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
         if (value) params.append(key, value.toString());
       });
 
-      console.log('Fetching advocates with URL:', `${import.meta.env.VITE_API_URL}/api/advocate-chat/advocates?${params}`);
+      console.log('🔍 Fetching advocates with URL:', `${import.meta.env.VITE_API_URL}/api/advocate-chat/advocates?${params}`);
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/advocate-chat/advocates?${params}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
-      console.log('Response status:', response.status);
+      console.log('📡 Response status:', response.status);
       const data = await response.json();
-      console.log('Response data:', data);
+      console.log('📡 Response data:', data);
 
       if (data.success) {
         setAdvocates(data.advocates);
-        console.log(`Successfully loaded ${data.advocates.length} advocates`);
+        console.log(`✅ Successfully loaded ${data.advocates.length} advocates`);
       } else {
         setError(data.error || 'Failed to load advocates');
-        console.error('API error:', data.error);
+        console.error('❌ API error:', data.error);
       }
     } catch (error) {
-      console.error('Error fetching advocates:', error);
+      console.error('❌ Error fetching advocates:', error);
       setError('Network error while fetching advocates');
     } finally {
       setAdvocatesLoading(false);
@@ -143,9 +168,13 @@ const AdvocateChat: React.FC = () => {
 
   const fetchConsultations = async () => {
     try {
+      const token = await getAuthToken();
+      if (!token) return;
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/advocate-chat/consultations`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
@@ -160,9 +189,13 @@ const AdvocateChat: React.FC = () => {
 
   const fetchMessages = async (consultationId: number) => {
     try {
+      const token = await getAuthToken();
+      if (!token) return;
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/advocate-chat/consultations/${consultationId}/messages`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
 
@@ -178,11 +211,17 @@ const AdvocateChat: React.FC = () => {
   const startConsultation = async (advocateId: number) => {
     setLoading(true);
     try {
+      const token = await getAuthToken();
+      if (!token) {
+        alert('Please login first');
+        return;
+      }
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/advocate-chat/consultations/start`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ advocateId, consultationType: 'chat' })
       });
@@ -210,11 +249,14 @@ const AdvocateChat: React.FC = () => {
     if (!newMessage.trim() || !activeConsultation) return;
 
     try {
+      const token = await getAuthToken();
+      if (!token) return;
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/advocate-chat/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           consultationId: activeConsultation.id,

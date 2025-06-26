@@ -10,14 +10,50 @@ const authenticateUser = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
+      console.log('❌ No token provided');
       return res.status(401).json({ success: false, error: 'No token provided' });
     }
 
+    console.log('🔍 Verifying token...');
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
-    req.user = decoded;
+    console.log('✅ Token decoded:', { userId: decoded.userId, advocateId: decoded.advocateId, type: decoded.type });
+    
+    // Check if it's a Firebase user token or advocate token
+    if (decoded.userId) {
+      // This is a regular user token
+      const [users] = await pool.execute(
+        'SELECT id, email, name FROM users WHERE id = ?',
+        [decoded.userId]
+      );
+      
+      if (users.length === 0) {
+        console.log('❌ User not found in database');
+        return res.status(401).json({ success: false, error: 'User not found' });
+      }
+      
+      req.user = { ...decoded, userType: 'user', userData: users[0] };
+    } else if (decoded.advocateId) {
+      // This is an advocate token
+      const [advocates] = await pool.execute(
+        'SELECT id, full_name, email FROM advocates WHERE id = ?',
+        [decoded.advocateId]
+      );
+      
+      if (advocates.length === 0) {
+        console.log('❌ Advocate not found in database');
+        return res.status(401).json({ success: false, error: 'Advocate not found' });
+      }
+      
+      req.user = { ...decoded, userType: 'advocate', advocateData: advocates[0] };
+    } else {
+      console.log('❌ Invalid token structure');
+      return res.status(401).json({ success: false, error: 'Invalid token structure' });
+    }
+    
+    console.log('✅ Authentication successful');
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
+    console.error('❌ Authentication error:', error.message);
     res.status(401).json({ success: false, error: 'Invalid token' });
   }
 };
@@ -27,7 +63,7 @@ router.get('/advocates', authenticateUser, async (req, res) => {
   try {
     const { specialization, language, minRating, maxFee, isOnline } = req.query;
     
-    console.log('Fetching advocates with filters:', { specialization, language, minRating, maxFee, isOnline });
+    console.log('🔍 Fetching advocates with filters:', { specialization, language, minRating, maxFee, isOnline });
     
     let query = `
       SELECT 
@@ -66,12 +102,12 @@ router.get('/advocates', authenticateUser, async (req, res) => {
 
     query += ` ORDER BY is_online DESC, rating DESC, total_consultations DESC`;
 
-    console.log('Executing query:', query);
-    console.log('With params:', params);
+    console.log('📝 Executing query:', query);
+    console.log('📝 With params:', params);
 
     const [advocates] = await pool.execute(query, params);
 
-    console.log(`Found ${advocates.length} advocates`);
+    console.log(`✅ Found ${advocates.length} advocates`);
 
     const formattedAdvocates = advocates.map(advocate => ({
       ...advocate,
@@ -84,7 +120,7 @@ router.get('/advocates', authenticateUser, async (req, res) => {
       advocates: formattedAdvocates
     });
   } catch (error) {
-    console.error('Get advocates error:', error);
+    console.error('❌ Error fetching advocates:', error);
     res.status(500).json({ success: false, error: 'Failed to get advocates: ' + error.message });
   }
 });
@@ -140,14 +176,21 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
 router.post('/consultations/start', authenticateUser, async (req, res) => {
   try {
     const { advocateId, consultationType = 'chat' } = req.body;
-    const userId = req.user.userId || req.user.advocateId;
+    const userId = req.user.userId || req.user.userData?.id;
 
-    console.log('Starting consultation:', { advocateId, userId, consultationType });
+    console.log('🚀 Starting consultation:', { advocateId, userId, consultationType });
 
     if (!advocateId) {
       return res.status(400).json({
         success: false,
         error: 'Advocate ID is required'
+      });
+    }
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'User ID not found in token'
       });
     }
 
@@ -195,7 +238,7 @@ router.post('/consultations/start', authenticateUser, async (req, res) => {
       ) VALUES (?, ?, ?, 'active')
     `, [consultationId, userId, advocateId]);
 
-    console.log('Consultation created with ID:', consultationId);
+    console.log('✅ Consultation created with ID:', consultationId);
 
     res.json({
       success: true,
@@ -217,8 +260,8 @@ router.post('/consultations/start', authenticateUser, async (req, res) => {
 // Get user's consultations
 router.get('/consultations', authenticateUser, async (req, res) => {
   try {
-    const userId = req.user.userId || req.user.advocateId;
-    const userType = req.user.type || 'user';
+    const userId = req.user.userId || req.user.advocateId || req.user.userData?.id;
+    const userType = req.user.userType || req.user.type || 'user';
 
     let query, params;
 
@@ -264,8 +307,8 @@ router.get('/consultations', authenticateUser, async (req, res) => {
 router.post('/messages', authenticateUser, async (req, res) => {
   try {
     const { consultationId, message, messageType = 'text' } = req.body;
-    const senderId = req.user.userId || req.user.advocateId;
-    const senderType = req.user.type || 'user';
+    const senderId = req.user.userId || req.user.advocateId || req.user.userData?.id;
+    const senderType = req.user.userType || req.user.type || 'user';
 
     if (!consultationId || !message) {
       return res.status(400).json({
@@ -325,7 +368,7 @@ router.get('/consultations/:consultationId/messages', authenticateUser, async (r
     const { consultationId } = req.params;
     const { page = 1, limit = 50 } = req.query;
     const offset = (page - 1) * limit;
-    const userId = req.user.userId || req.user.advocateId;
+    const userId = req.user.userId || req.user.advocateId || req.user.userData?.id;
 
     // Verify access
     const [consultations] = await pool.execute(`
@@ -361,7 +404,7 @@ router.get('/consultations/:consultationId/messages', authenticateUser, async (r
 router.patch('/consultations/:consultationId/end', authenticateUser, async (req, res) => {
   try {
     const { consultationId } = req.params;
-    const userId = req.user.userId || req.user.advocateId;
+    const userId = req.user.userId || req.user.advocateId || req.user.userData?.id;
 
     // Verify access
     const [consultations] = await pool.execute(`
@@ -404,9 +447,9 @@ router.patch('/consultations/:consultationId/end', authenticateUser, async (req,
 router.post('/reviews', authenticateUser, async (req, res) => {
   try {
     const { consultationId, advocateId, rating, reviewText } = req.body;
-    const userId = req.user.userId;
+    const userId = req.user.userId || req.user.userData?.id;
 
-    if (req.user.type === 'advocate') {
+    if (req.user.userType === 'advocate' || req.user.type === 'advocate') {
       return res.status(403).json({
         success: false,
         error: 'Advocates cannot submit reviews'
