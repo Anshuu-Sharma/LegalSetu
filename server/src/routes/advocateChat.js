@@ -43,18 +43,26 @@ const authenticateUser = async (req, res, next) => {
           if (users.length === 0) {
             console.log('🆕 Creating new user for advocate chat:', payload.email);
             // Create user if doesn't exist - with default password
-            const [result] = await pool.execute(
-              'INSERT INTO users (email, name, preferred_language, password) VALUES (?, ?, ?, ?)',
-              [payload.email, payload.name || payload.email.split('@')[0], 'en', 'firebase_user']
-            );
-            
-            req.user = {
-              userId: result.insertId,
-              email: payload.email,
-              name: payload.name || payload.email.split('@')[0],
-              type: 'user'
-            };
-            console.log('✅ New user created for advocate chat:', result.insertId);
+            try {
+              const [result] = await pool.execute(
+                'INSERT INTO users (email, name, preferred_language, password) VALUES (?, ?, ?, ?)',
+                [payload.email, payload.name || payload.email.split('@')[0], 'en', 'firebase_user']
+              );
+              
+              req.user = {
+                userId: result.insertId,
+                email: payload.email,
+                name: payload.name || payload.email.split('@')[0],
+                type: 'user'
+              };
+              console.log('✅ New user created for advocate chat:', result.insertId);
+            } catch (dbError) {
+              console.error('❌ Database error creating user:', dbError);
+              return res.status(500).json({ 
+                success: false, 
+                error: 'Failed to create user account' 
+              });
+            }
           } else {
             req.user = {
               userId: users[0].id,
@@ -124,7 +132,10 @@ const authenticateUser = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('❌ Advocate chat authentication error:', error.message);
-    res.status(401).json({ success: false, error: 'Authentication failed. Please login again.' });
+    return res.status(401).json({ 
+      success: false, 
+      error: 'Authentication failed. Please login again.' 
+    });
   }
 };
 
@@ -186,13 +197,16 @@ router.get('/advocates', authenticateUser, async (req, res) => {
       languages: JSON.parse(advocate.languages || '[]')
     }));
 
-    res.json({
+    return res.json({
       success: true,
       advocates: formattedAdvocates
     });
   } catch (error) {
     console.error('❌ Error fetching advocates:', error);
-    res.status(500).json({ success: false, error: 'Failed to get advocates: ' + error.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to get advocates: ' + error.message 
+    });
   }
 });
 
@@ -227,7 +241,7 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
       LIMIT 5
     `, [advocateId]);
 
-    res.json({
+    return res.json({
       success: true,
       advocate: {
         ...advocate,
@@ -239,7 +253,10 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
     });
   } catch (error) {
     console.error('Get advocate details error:', error);
-    res.status(500).json({ success: false, error: 'Failed to get advocate details: ' + error.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to get advocate details: ' + error.message 
+    });
   }
 });
 
@@ -311,7 +328,7 @@ router.post('/consultations/start', authenticateUser, async (req, res) => {
 
     console.log('✅ Consultation created with ID:', consultationId);
 
-    res.json({
+    return res.json({
       success: true,
       consultation: {
         id: consultationId,
@@ -324,7 +341,10 @@ router.post('/consultations/start', authenticateUser, async (req, res) => {
     });
   } catch (error) {
     console.error('Start consultation error:', error);
-    res.status(500).json({ success: false, error: 'Failed to start consultation: ' + error.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to start consultation: ' + error.message 
+    });
   }
 });
 
@@ -364,13 +384,16 @@ router.get('/consultations', authenticateUser, async (req, res) => {
 
     const [consultations] = await pool.execute(query, params);
 
-    res.json({
+    return res.json({
       success: true,
       consultations
     });
   } catch (error) {
     console.error('Get consultations error:', error);
-    res.status(500).json({ success: false, error: 'Failed to get consultations: ' + error.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to get consultations: ' + error.message 
+    });
   }
 });
 
@@ -415,7 +438,7 @@ router.post('/messages', authenticateUser, async (req, res) => {
       WHERE consultation_id = ?
     `, [message, consultationId]);
 
-    res.json({
+    return res.json({
       success: true,
       message: {
         id: result.insertId,
@@ -429,7 +452,10 @@ router.post('/messages', authenticateUser, async (req, res) => {
     });
   } catch (error) {
     console.error('Send message error:', error);
-    res.status(500).json({ success: false, error: 'Failed to send message: ' + error.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to send message: ' + error.message 
+    });
   }
 });
 
@@ -461,13 +487,16 @@ router.get('/consultations/:consultationId/messages', authenticateUser, async (r
       LIMIT ? OFFSET ?
     `, [consultationId, parseInt(limit), offset]);
 
-    res.json({
+    return res.json({
       success: true,
       messages: messages.reverse() // Show oldest first
     });
   } catch (error) {
     console.error('Get messages error:', error);
-    res.status(500).json({ success: false, error: 'Failed to get messages: ' + error.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to get messages: ' + error.message 
+    });
   }
 });
 
@@ -504,13 +533,16 @@ router.patch('/consultations/:consultationId/end', authenticateUser, async (req,
       WHERE consultation_id = ?
     `, [consultationId]);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Consultation ended successfully'
     });
   } catch (error) {
     console.error('End consultation error:', error);
-    res.status(500).json({ success: false, error: 'Failed to end consultation: ' + error.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to end consultation: ' + error.message 
+    });
   }
 });
 
@@ -580,13 +612,16 @@ router.post('/reviews', authenticateUser, async (req, res) => {
       WHERE id = ?
     `, [ratingStats[0].avg_rating, ratingStats[0].total_reviews, advocateId]);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Review submitted successfully'
     });
   } catch (error) {
     console.error('Submit review error:', error);
-    res.status(500).json({ success: false, error: 'Failed to submit review: ' + error.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to submit review: ' + error.message 
+    });
   }
 });
 
