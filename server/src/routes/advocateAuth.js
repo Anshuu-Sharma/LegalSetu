@@ -88,7 +88,7 @@ const safeJsonParse = (jsonString, fallback = []) => {
   return fallback;
 };
 
-// ✅ NEW: Helper function to generate pre-signed URLs for S3 objects
+// ✅ FIXED: Helper function to generate pre-signed URLs for S3 objects with proper URL decoding
 const generatePresignedUrl = async (s3Url) => {
   if (!s3Url || !s3Url.includes('amazonaws.com')) {
     return s3Url; // Return as-is if not an S3 URL
@@ -99,9 +99,11 @@ const generatePresignedUrl = async (s3Url) => {
     const url = new URL(s3Url);
     const pathParts = url.pathname.substring(1).split('/');
     const bucket = process.env.AWS_S3_BUCKET_NAME;
-    const key = pathParts.join('/');
     
-    console.log('🔗 Generating pre-signed URL for:', { bucket, key });
+    // ✅ CRITICAL FIX: Decode URL-encoded characters in the key
+    const key = decodeURIComponent(pathParts.join('/'));
+    
+    console.log('🔗 Generating pre-signed URL for:', { bucket, key, originalUrl: s3Url });
     
     const presignedUrl = await getSignedUrl(s3, new GetObjectCommand({
       Bucket: bucket,
