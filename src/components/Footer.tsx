@@ -31,7 +31,7 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
                         </motion.div>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed mb-4">
-              <LocalizedText text="India’s first AI-powered legal assistant. Fast, accurate, and multilingual legal services." />
+              <LocalizedText text="India's first AI-powered legal assistant. Fast, accurate, and multilingual legal services." />
             </p>
           </div>
 
@@ -63,6 +63,14 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
                   onClick={() => setActiveSection('forms')}
                 >
                   <LocalizedText text="Form Filling" />
+                </button>
+              </li>
+              <li>
+                <button
+                  className="hover:underline  bg-transparent border-none p-0"
+                  onClick={() => setActiveSection('advocate-chat')}
+                >
+                  <LocalizedText text="Chat with Advocates" />
                 </button>
               </li>
               <li>
@@ -122,6 +130,13 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
                 <MapPin className="w-4 h-4" />
                 <LocalizedText text=" Delhi, India" />
               </div>
+              <button
+                  className="hover:underline  bg-transparent border-none p-0"
+                  onClick={() => setActiveSection('advocate-registration')}
+                >
+                  <LocalizedText text="Join as Advocate" />
+                </button>
+              <br />
               <button
                   className="hover:underline  bg-transparent border-none p-0"
                   onClick={() => setActiveSection('easter')}

@@ -10,15 +10,15 @@ import Login from './components/Login';
 import Signup from './components/Signup';
 import AboutUs from './components/AboutUs.tsx';
 import Advocate from './components/Advocate.tsx';
+import AdvocateRegistration from './components/AdvocateRegistration';
+import AdvocateChat from './components/AdvocateChat';
+import AdvocatePortal from './components/AdvocatePortal';
 import { TranslationProvider } from './contexts/TranslationContext';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import CaseLaws from './components/CaseLaws';
 import EasterEgg from './components/EasterEgg.tsx';
 import { TTSProvider } from './contexts/ttsContext';
-
-
-
 
 const App: React.FC = () => {
   // Firebase authentication state
@@ -65,6 +65,12 @@ const App: React.FC = () => {
   const handleSectionChange = (section: string) => {
     if (section === 'home') {
       setActiveSection('home');
+    } else if (section === 'advocate-registration') {
+      setActiveSection('advocate-registration');
+    } else if (section === 'advocate-portal') {
+      setActiveSection('advocate-portal');
+    } else if (section === 'advocate-chat') {
+      requireAuth(() => setActiveSection('advocate-chat'));
     } else {
       requireAuth(() => setActiveSection(section));
     }
@@ -123,11 +129,13 @@ const App: React.FC = () => {
             {activeSection === 'about_us' && <AboutUs />}
             {activeSection === 'cases' && <CaseLaws />}
             {activeSection === 'advocate' && <Advocate/>}
+            {activeSection === 'advocate-registration' && <AdvocateRegistration />}
+            {activeSection === 'advocate-chat' && <AdvocateChat />}
+            {activeSection === 'advocate-portal' && <AdvocatePortal />}
             {activeSection === 'easter' && <EasterEgg />}
           </main>
 
           <Footer setActiveSection={setActiveSection} />
-
 
           {/* Auth Modals */}
           {showLogin && (
