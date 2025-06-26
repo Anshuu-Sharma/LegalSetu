@@ -104,6 +104,7 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
   };
 
   const handleDocumentView = (documentUrl: string) => {
+    // ✅ S3 URLs are already complete, no need to modify
     const fullUrl = documentUrl.startsWith('http') 
       ? documentUrl 
       : `${import.meta.env.VITE_API_URL}${documentUrl}`;
@@ -124,7 +125,7 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
     const filename = parts[parts.length - 1];
     
     // Try to make filename more readable
-    if (filename.includes('profilePhoto')) return 'Profile Photo';
+    if (filename.includes('profile')) return 'Profile Photo';
     if (filename.includes('documents')) return 'Legal Document';
     if (filename.includes('certificate')) return 'Certificate';
     if (filename.includes('degree')) return 'Degree Certificate';
@@ -164,9 +165,7 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
                 <div className="w-24 h-24 rounded-2xl overflow-hidden bg-white/20 backdrop-blur-sm border-2 border-white/30">
                   {advocate.profile_photo_url ? (
                     <img
-                      src={advocate.profile_photo_url.startsWith('http') 
-                        ? advocate.profile_photo_url 
-                        : `${import.meta.env.VITE_API_URL}${advocate.profile_photo_url}`}
+                      src={advocate.profile_photo_url} // ✅ S3 URL is already complete
                       alt={advocate.full_name}
                       className="w-full h-full object-cover"
                       onError={(e) => {

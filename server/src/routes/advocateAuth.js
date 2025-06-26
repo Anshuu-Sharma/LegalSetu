@@ -3,40 +3,10 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/database');
-const multer = require('multer');
+const { uploadS3 } = require('../config/multer-s3');
 const path = require('path');
-const fs = require('fs');
 
 const router = express.Router();
-
-// Configure multer for file uploads (fallback to local storage)
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = 'uploads/advocates/';
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['.jpg', '.jpeg', '.png', '.pdf', '.doc', '.docx'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowedTypes.includes(ext)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only JPG, PNG, PDF, DOC, DOCX allowed.'));
-    }
-  }
-});
 
 // ✅ ENHANCED: Helper function to safely parse JSON with comprehensive error handling
 const safeJsonParse = (jsonString, fallback = []) => {
@@ -115,19 +85,19 @@ const safeJsonParse = (jsonString, fallback = []) => {
   return fallback;
 };
 
-// Advocate Registration
+// Advocate Registration with S3 Storage
 router.post('/register', (req, res) => {
-  const uploadMiddleware = upload.fields([
+  const uploadMiddleware = uploadS3.fields([
     { name: 'profilePhoto', maxCount: 1 },
     { name: 'documents', maxCount: 5 }
   ]);
 
   uploadMiddleware(req, res, async (err) => {
     if (err) {
-      console.error('File upload error:', err);
+      console.error('S3 upload error:', err);
       return res.status(400).json({
         success: false,
-        error: err.message || 'File upload failed'
+        error: err.message || 'File upload to S3 failed'
       });
     }
 
@@ -186,11 +156,16 @@ router.post('/register', (req, res) => {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 12);
 
-      // Handle file uploads - Generate proper URLs
-      const profilePhotoUrl = req.files?.profilePhoto?.[0] 
-        ? `/uploads/advocates/${req.files.profilePhoto[0].filename}` 
-        : null;
-      const documentUrls = req.files?.documents?.map(file => `/uploads/advocates/${file.filename}`) || [];
+      // ✅ Handle S3 file uploads - Store S3 URLs directly
+      const profilePhotoUrl = req.files?.profilePhoto?.[0]?.location || null;
+      const documentUrls = req.files?.documents?.map(file => file.location) || [];
+
+      console.log('✅ S3 Upload Results:', {
+        profilePhotoUrl,
+        documentUrls,
+        profilePhotoKey: req.files?.profilePhoto?.[0]?.key,
+        documentKeys: req.files?.documents?.map(file => file.key)
+      });
 
       // ✅ ENHANCED: Properly parse arrays from strings and convert to JSON
       const specializationsArray = specializations 
@@ -219,7 +194,7 @@ router.post('/register', (req, res) => {
         documentUrls
       });
 
-      // Insert advocate with proper JSON arrays
+      // Insert advocate with S3 URLs
       const [result] = await pool.execute(`
         INSERT INTO advocates (
           full_name, email, password, phone, bar_council_number,
@@ -236,8 +211,8 @@ router.post('/register', (req, res) => {
         JSON.stringify(courtsPracticingArray), // ✅ Store as proper JSON
         parseFloat(consultationFee),
         bio || '', city || '', state || '', 
-        profilePhotoUrl, // ✅ Store proper URL path
-        JSON.stringify(documentUrls) // ✅ Store as proper JSON
+        profilePhotoUrl, // ✅ Store S3 URL
+        JSON.stringify(documentUrls) // ✅ Store S3 URLs as JSON
       ]);
 
       console.log('✅ Advocate registered with ID:', result.insertId);
@@ -366,7 +341,7 @@ router.post('/login', async (req, res) => {
       rating: advocate.rating || 0,
       totalConsultations: advocate.total_consultations || 0,
       isOnline: true,
-      profilePhotoUrl: advocate.profile_photo_url,
+      profilePhotoUrl: advocate.profile_photo_url, // ✅ S3 URL already stored
       status: advocate.status
     };
 

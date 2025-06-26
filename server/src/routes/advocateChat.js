@@ -236,12 +236,8 @@ router.get('/advocates', authenticateUser, async (req, res) => {
           ...advocate,
           specializations: safeJsonParse(advocate.specializations, []),
           languages: safeJsonParse(advocate.languages, []),
-          // ✅ Ensure profile photo URL is properly formatted
-          profile_photo_url: advocate.profile_photo_url 
-            ? (advocate.profile_photo_url.startsWith('http') 
-                ? advocate.profile_photo_url 
-                : `${process.env.API_BASE_URL || 'http://localhost:5000'}${advocate.profile_photo_url}`)
-            : null,
+          // ✅ Profile photo URL is already S3 URL, no need to modify
+          profile_photo_url: advocate.profile_photo_url,
           // ✅ Ensure numeric fields are properly formatted
           rating: advocate.rating ? parseFloat(advocate.rating) : 0,
           consultation_fee: advocate.consultation_fee ? parseFloat(advocate.consultation_fee) : 0,
@@ -320,11 +316,8 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
         languages: safeJsonParse(advocate.languages, []),
         courts_practicing: safeJsonParse(advocate.courts_practicing, []),
         document_urls: safeJsonParse(advocate.document_urls, []),
-        profile_photo_url: advocate.profile_photo_url 
-          ? (advocate.profile_photo_url.startsWith('http') 
-              ? advocate.profile_photo_url 
-              : `${process.env.API_BASE_URL || 'http://localhost:5000'}${advocate.profile_photo_url}`)
-          : null,
+        // ✅ Profile photo URL is already S3 URL, no need to modify
+        profile_photo_url: advocate.profile_photo_url,
         reviews
       }
     });
