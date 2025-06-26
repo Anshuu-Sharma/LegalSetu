@@ -139,19 +139,42 @@ const authenticateUser = async (req, res, next) => {
   }
 };
 
-// Helper function to safely parse JSON
+// ✅ FIXED: Helper function to safely parse JSON with better error handling
 const safeJsonParse = (jsonString, fallback = []) => {
-  if (!jsonString || jsonString === null || jsonString === undefined) {
+  if (!jsonString || jsonString === null || jsonString === undefined || jsonString === '') {
     return fallback;
   }
   
-  try {
-    const parsed = JSON.parse(jsonString);
-    return Array.isArray(parsed) ? parsed : fallback;
-  } catch (error) {
-    console.warn('⚠️ Failed to parse JSON:', jsonString, 'Error:', error.message);
-    return fallback;
+  // If it's already an array, return it
+  if (Array.isArray(jsonString)) {
+    return jsonString;
   }
+  
+  // If it's a string that looks like a comma-separated list, parse it
+  if (typeof jsonString === 'string') {
+    // Check if it's already JSON
+    if (jsonString.startsWith('[') && jsonString.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(jsonString);
+        return Array.isArray(parsed) ? parsed : fallback;
+      } catch (error) {
+        console.warn('⚠️ Failed to parse JSON array:', jsonString, 'Error:', error.message);
+        return fallback;
+      }
+    }
+    
+    // If it's a comma-separated string, split it
+    if (jsonString.includes(',')) {
+      return jsonString.split(',').map(item => item.trim()).filter(item => item.length > 0);
+    }
+    
+    // If it's a single item, return as array
+    if (jsonString.trim().length > 0) {
+      return [jsonString.trim()];
+    }
+  }
+  
+  return fallback;
 };
 
 // Get available advocates
@@ -206,20 +229,36 @@ router.get('/advocates', authenticateUser, async (req, res) => {
 
     console.log(`✅ Found ${advocates.length} advocates`);
 
-    // Safely parse JSON fields for each advocate
+    // ✅ FIXED: Safely parse JSON fields for each advocate with better error handling
     const formattedAdvocates = advocates.map(advocate => {
       try {
         return {
           ...advocate,
           specializations: safeJsonParse(advocate.specializations, []),
-          languages: safeJsonParse(advocate.languages, [])
+          languages: safeJsonParse(advocate.languages, []),
+          // ✅ Ensure profile photo URL is properly formatted
+          profile_photo_url: advocate.profile_photo_url 
+            ? (advocate.profile_photo_url.startsWith('http') 
+                ? advocate.profile_photo_url 
+                : `${process.env.API_BASE_URL || 'http://localhost:5000'}${advocate.profile_photo_url}`)
+            : null,
+          // ✅ Ensure numeric fields are properly formatted
+          rating: advocate.rating ? parseFloat(advocate.rating) : 0,
+          consultation_fee: advocate.consultation_fee ? parseFloat(advocate.consultation_fee) : 0,
+          total_consultations: advocate.total_consultations ? parseInt(advocate.total_consultations) : 0,
+          experience: advocate.experience ? parseInt(advocate.experience) : 0
         };
       } catch (error) {
         console.error('❌ Error formatting advocate:', advocate.id, error);
         return {
           ...advocate,
           specializations: [],
-          languages: []
+          languages: [],
+          profile_photo_url: null,
+          rating: 0,
+          consultation_fee: 0,
+          total_consultations: 0,
+          experience: 0
         };
       }
     });
@@ -275,6 +314,11 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
         specializations: safeJsonParse(advocate.specializations, []),
         languages: safeJsonParse(advocate.languages, []),
         courtsPracticing: safeJsonParse(advocate.courts_practicing, []),
+        profile_photo_url: advocate.profile_photo_url 
+          ? (advocate.profile_photo_url.startsWith('http') 
+              ? advocate.profile_photo_url 
+              : `${process.env.API_BASE_URL || 'http://localhost:5000'}${advocate.profile_photo_url}`)
+          : null,
         reviews
       }
     });

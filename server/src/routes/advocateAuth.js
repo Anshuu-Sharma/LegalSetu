@@ -1,4 +1,3 @@
-// server/src/routes/advocateAuth.js
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -80,7 +79,9 @@ router.post('/register', (req, res) => {
         experience,
         consultationFee,
         city,
-        state
+        state,
+        specializations,
+        languages
       });
 
       // Validation
@@ -107,16 +108,40 @@ router.post('/register', (req, res) => {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 12);
 
-      // Handle file uploads
-      const profilePhotoUrl = req.files?.profilePhoto?.[0]?.path || null;
-      const documentUrls = req.files?.documents?.map(file => file.path) || [];
+      // Handle file uploads - Generate proper URLs
+      const profilePhotoUrl = req.files?.profilePhoto?.[0] 
+        ? `/uploads/advocates/${req.files.profilePhoto[0].filename}` 
+        : null;
+      const documentUrls = req.files?.documents?.map(file => `/uploads/advocates/${file.filename}`) || [];
 
-      // Parse arrays from strings
-      const specializationsArray = specializations ? specializations.split(',').map(s => s.trim()) : [];
-      const languagesArray = languages ? languages.split(',').map(l => l.trim()) : [];
-      const courtsPracticingArray = courtsPracticing ? courtsPracticing.split(',').map(c => c.trim()) : [];
+      // ✅ FIXED: Properly parse arrays from strings and convert to JSON
+      const specializationsArray = specializations 
+        ? (typeof specializations === 'string' 
+            ? specializations.split(',').map(s => s.trim()).filter(s => s.length > 0)
+            : Array.isArray(specializations) ? specializations : [])
+        : [];
+        
+      const languagesArray = languages 
+        ? (typeof languages === 'string' 
+            ? languages.split(',').map(l => l.trim()).filter(l => l.length > 0)
+            : Array.isArray(languages) ? languages : [])
+        : [];
+        
+      const courtsPracticingArray = courtsPracticing 
+        ? (typeof courtsPracticing === 'string' 
+            ? courtsPracticing.split(',').map(c => c.trim()).filter(c => c.length > 0)
+            : Array.isArray(courtsPracticing) ? courtsPracticing : [])
+        : [];
 
-      // Insert advocate
+      console.log('✅ Processed arrays:', {
+        specializationsArray,
+        languagesArray,
+        courtsPracticingArray,
+        profilePhotoUrl,
+        documentUrls
+      });
+
+      // Insert advocate with proper JSON arrays
       const [result] = await pool.execute(`
         INSERT INTO advocates (
           full_name, email, password, phone, bar_council_number,
@@ -126,13 +151,18 @@ router.post('/register', (req, res) => {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', false)
       `, [
         fullName, email, hashedPassword, phone, barCouncilNumber,
-        parseInt(experience), JSON.stringify(specializationsArray),
-        JSON.stringify(languagesArray), education || '',
-        JSON.stringify(courtsPracticingArray), parseFloat(consultationFee),
-        bio || '', city || '', state || '', profilePhotoUrl, JSON.stringify(documentUrls)
+        parseInt(experience), 
+        JSON.stringify(specializationsArray), // ✅ Store as proper JSON
+        JSON.stringify(languagesArray),      // ✅ Store as proper JSON
+        education || '',
+        JSON.stringify(courtsPracticingArray), // ✅ Store as proper JSON
+        parseFloat(consultationFee),
+        bio || '', city || '', state || '', 
+        profilePhotoUrl, // ✅ Store proper URL path
+        JSON.stringify(documentUrls) // ✅ Store as proper JSON
       ]);
 
-      console.log('Advocate registered with ID:', result.insertId);
+      console.log('✅ Advocate registered with ID:', result.insertId);
 
       const token = jwt.sign(
         { advocateId: result.insertId, email, type: 'advocate' },
@@ -148,11 +178,12 @@ router.post('/register', (req, res) => {
           id: result.insertId,
           fullName,
           email,
-          status: 'pending'
+          status: 'pending',
+          profilePhotoUrl
         }
       });
     } catch (error) {
-      console.error('Advocate registration error:', error);
+      console.error('❌ Advocate registration error:', error);
       res.status(500).json({
         success: false,
         error: 'Registration failed: ' + error.message
