@@ -5,7 +5,7 @@ const { pool } = require('../config/database');
 
 const router = express.Router();
 
-// Middleware to authenticate users and advocates
+// Enhanced authentication middleware for advocate chat
 const authenticateUser = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -22,6 +22,12 @@ const authenticateUser = async (req, res, next) => {
       const parts = token.split('.');
       if (parts.length === 3) {
         const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+        
+        console.log('🔍 Token payload check:', {
+          hasIss: !!payload.iss,
+          hasEmail: !!payload.email,
+          iss: payload.iss
+        });
         
         if (payload.iss && payload.iss.includes('securetoken.google.com') && payload.email) {
           console.log('✅ Firebase token detected for:', payload.email);
@@ -66,10 +72,11 @@ const authenticateUser = async (req, res, next) => {
         }
       }
     } catch (firebaseError) {
-      console.log('🔄 Not a Firebase token, trying JWT...');
+      console.log('🔄 Firebase token parsing failed:', firebaseError.message);
     }
 
     // Try JWT token
+    console.log('🔄 Trying JWT verification...');
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
     console.log('✅ JWT token decoded:', { userId: decoded.userId, advocateId: decoded.advocateId, type: decoded.type });
     
@@ -119,7 +126,7 @@ const authenticateUser = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('❌ Advocate chat authentication error:', error.message);
-    res.status(401).json({ success: false, error: 'Invalid token: ' + error.message });
+    res.status(401).json({ success: false, error: 'Authentication failed. Please login again.' });
   }
 };
 

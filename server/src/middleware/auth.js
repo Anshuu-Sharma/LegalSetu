@@ -5,8 +5,8 @@ const { pool } = require('../config/database');
 // Simple Firebase token verification without Admin SDK
 const verifyFirebaseToken = async (token) => {
   try {
-    // For development, we'll use a simpler approach
-    // In production, you should use Firebase Admin SDK
+    // For development, we'll decode without verification
+    // In production, you should use Firebase Admin SDK for proper verification
     
     // Check if token looks like a Firebase token (JWT with 3 parts)
     const parts = token.split('.');
@@ -14,24 +14,34 @@ const verifyFirebaseToken = async (token) => {
       throw new Error('Invalid token format');
     }
 
-    // Decode the payload (without verification for now)
+    // Decode the payload (without verification for development)
     const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
     
+    console.log('🔍 Decoded Firebase token payload:', {
+      iss: payload.iss,
+      aud: payload.aud,
+      email: payload.email,
+      exp: payload.exp,
+      iat: payload.iat
+    });
+
     // Basic validation
-    if (!payload.email || !payload.iss || !payload.aud) {
-      throw new Error('Invalid Firebase token structure');
+    if (!payload.email) {
+      throw new Error('No email in token');
     }
 
     // Check if it's from Firebase
-    if (!payload.iss.includes('securetoken.google.com')) {
+    if (!payload.iss || !payload.iss.includes('securetoken.google.com')) {
       throw new Error('Not a Firebase token');
     }
 
-    console.log('✅ Firebase token decoded:', {
-      email: payload.email,
-      name: payload.name,
-      uid: payload.user_id || payload.sub
-    });
+    // Check if token is expired
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < now) {
+      throw new Error('Token expired');
+    }
+
+    console.log('✅ Firebase token validated for:', payload.email);
 
     return {
       email: payload.email,
@@ -100,7 +110,8 @@ const authenticateToken = async (req, res, next) => {
       
       return next();
     } catch (firebaseError) {
-      console.log('🔄 Not a Firebase token, trying JWT verification...');
+      console.log('🔄 Firebase verification failed:', firebaseError.message);
+      console.log('🔄 Trying JWT verification...');
     }
 
     // If Firebase verification fails, try JWT verification
@@ -160,7 +171,7 @@ const authenticateToken = async (req, res, next) => {
     console.error('❌ Auth error:', error.message);
     return res.status(403).json({ 
       success: false, 
-      error: 'Invalid or expired token: ' + error.message 
+      error: 'Authentication failed. Please login again.' 
     });
   }
 };

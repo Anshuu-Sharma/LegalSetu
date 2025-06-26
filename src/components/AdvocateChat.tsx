@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Filter, Star, MapPin, Clock, MessageCircle,
   Phone, Video, User, Send, ArrowLeft, MoreVertical,
-  CheckCircle, Circle, Heart, Shield, RefreshCw
+  CheckCircle, Circle, Heart, Shield, RefreshCw, AlertCircle
 } from 'lucide-react';
 import LocalizedText from './LocalizedText';
 import ChatHeader from './ChatHeader';
@@ -62,6 +62,7 @@ const AdvocateChat: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [advocatesLoading, setAdvocatesLoading] = useState(true);
   const [error, setError] = useState('');
+  const [authError, setAuthError] = useState('');
   const [filters, setFilters] = useState({
     specialization: '',
     language: '',
@@ -86,22 +87,45 @@ const AdvocateChat: React.FC = () => {
   const getAuthToken = async () => {
     try {
       if (auth.currentUser) {
-        const token = await auth.currentUser.getIdToken();
-        console.log('🔑 Firebase token obtained');
+        const token = await auth.currentUser.getIdToken(true); // Force refresh
+        console.log('🔑 Firebase token obtained for:', auth.currentUser.email);
         return token;
       } else {
         console.log('❌ No Firebase user found');
+        setAuthError('Please login to access this feature');
         return null;
       }
     } catch (error) {
       console.error('❌ Error getting Firebase token:', error);
+      setAuthError('Authentication failed. Please login again.');
       return null;
     }
   };
 
   useEffect(() => {
-    fetchAdvocates();
-    fetchConsultations();
+    // Check if user is logged in
+    const checkAuth = () => {
+      if (!auth.currentUser) {
+        setAuthError('Please login to access advocate chat');
+        setAdvocatesLoading(false);
+        return;
+      }
+      fetchAdvocates();
+      fetchConsultations();
+    };
+
+    // Wait for auth state to be determined
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        setAuthError('');
+        checkAuth();
+      } else {
+        setAuthError('Please login to access advocate chat');
+        setAdvocatesLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
   }, [filters]);
 
   useEffect(() => {
@@ -129,7 +153,6 @@ const AdvocateChat: React.FC = () => {
       
       const token = await getAuthToken();
       if (!token) {
-        setError('Authentication required. Please login first.');
         return;
       }
 
@@ -438,8 +461,27 @@ const AdvocateChat: React.FC = () => {
         </div>
       </div>
 
+      {/* Auth Error */}
+      {authError && (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-800 mb-2">
+            <LocalizedText text="Authentication Required" />
+          </h3>
+          <p className="text-gray-600 mb-4">{authError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <LocalizedText text="Refresh Page" />
+          </button>
+        </div>
+      )}
+
       {/* Loading State */}
-      {advocatesLoading && (
+      {advocatesLoading && !authError && (
         <div className="text-center py-12">
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <h3 className="text-lg font-medium text-gray-800 mb-2">
@@ -449,7 +491,7 @@ const AdvocateChat: React.FC = () => {
       )}
 
       {/* Error State */}
-      {error && (
+      {error && !authError && (
         <div className="text-center py-12">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Shield className="w-8 h-8 text-red-600" />
@@ -468,14 +510,14 @@ const AdvocateChat: React.FC = () => {
       )}
 
       {/* Advocates Grid */}
-      {!advocatesLoading && !error && (
+      {!advocatesLoading && !error && !authError && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredAdvocates.map(renderAdvocateCard)}
         </div>
       )}
 
       {/* No Results */}
-      {!advocatesLoading && !error && filteredAdvocates.length === 0 && (
+      {!advocatesLoading && !error && !authError && filteredAdvocates.length === 0 && (
         <div className="text-center py-12">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Search className="w-8 h-8 text-gray-400" />
