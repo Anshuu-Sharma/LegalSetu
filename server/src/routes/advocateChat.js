@@ -2,6 +2,9 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/database');
+const { s3 } = require('../config/s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { GetObjectCommand } = require('@aws-sdk/client-s3');
 
 const router = express.Router();
 
@@ -177,6 +180,34 @@ const safeJsonParse = (jsonString, fallback = []) => {
   return fallback;
 };
 
+// ✅ NEW: Helper function to generate pre-signed URLs for S3 objects
+const generatePresignedUrl = async (s3Url) => {
+  if (!s3Url || !s3Url.includes('amazonaws.com')) {
+    return s3Url; // Return as-is if not an S3 URL
+  }
+  
+  try {
+    // Extract bucket and key from S3 URL
+    const url = new URL(s3Url);
+    const pathParts = url.pathname.substring(1).split('/');
+    const bucket = process.env.AWS_S3_BUCKET_NAME;
+    const key = pathParts.join('/');
+    
+    console.log('🔗 Generating pre-signed URL for:', { bucket, key });
+    
+    const presignedUrl = await getSignedUrl(s3, new GetObjectCommand({
+      Bucket: bucket,
+      Key: key
+    }), { expiresIn: 3600 }); // 1 hour expiry
+    
+    console.log('✅ Pre-signed URL generated successfully');
+    return presignedUrl;
+  } catch (error) {
+    console.error('❌ Error generating pre-signed URL:', error);
+    return s3Url; // Return original URL as fallback
+  }
+};
+
 // Get available advocates
 router.get('/advocates', authenticateUser, async (req, res) => {
   try {
@@ -229,15 +260,20 @@ router.get('/advocates', authenticateUser, async (req, res) => {
 
     console.log(`✅ Found ${advocates.length} advocates`);
 
-    // ✅ FIXED: Safely parse JSON fields for each advocate with better error handling
-    const formattedAdvocates = advocates.map(advocate => {
+    // ✅ FIXED: Safely parse JSON fields for each advocate with better error handling + Pre-signed URLs
+    const formattedAdvocates = await Promise.all(advocates.map(async (advocate) => {
       try {
+        // Generate pre-signed URL for profile photo
+        const profilePhotoUrl = advocate.profile_photo_url 
+          ? await generatePresignedUrl(advocate.profile_photo_url)
+          : null;
+
         return {
           ...advocate,
           specializations: safeJsonParse(advocate.specializations, []),
           languages: safeJsonParse(advocate.languages, []),
-          // ✅ Profile photo URL is already S3 URL, no need to modify
-          profile_photo_url: advocate.profile_photo_url,
+          // ✅ Use pre-signed URL for profile photo
+          profile_photo_url: profilePhotoUrl,
           // ✅ Ensure numeric fields are properly formatted
           rating: advocate.rating ? parseFloat(advocate.rating) : 0,
           consultation_fee: advocate.consultation_fee ? parseFloat(advocate.consultation_fee) : 0,
@@ -257,7 +293,7 @@ router.get('/advocates', authenticateUser, async (req, res) => {
           experience: 0
         };
       }
-    });
+    }));
 
     return res.json({
       success: true,
@@ -308,6 +344,16 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
       LIMIT 5
     `, [advocateId]);
 
+    // ✅ Generate pre-signed URLs for profile photo and documents
+    const profilePhotoUrl = advocate.profile_photo_url 
+      ? await generatePresignedUrl(advocate.profile_photo_url)
+      : null;
+
+    const documentUrls = safeJsonParse(advocate.document_urls, []);
+    const presignedDocumentUrls = await Promise.all(
+      documentUrls.map(async (docUrl) => await generatePresignedUrl(docUrl))
+    );
+
     return res.json({
       success: true,
       advocate: {
@@ -315,9 +361,9 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
         specializations: safeJsonParse(advocate.specializations, []),
         languages: safeJsonParse(advocate.languages, []),
         courts_practicing: safeJsonParse(advocate.courts_practicing, []),
-        document_urls: safeJsonParse(advocate.document_urls, []),
-        // ✅ Profile photo URL is already S3 URL, no need to modify
-        profile_photo_url: advocate.profile_photo_url,
+        document_urls: presignedDocumentUrls, // ✅ Pre-signed URLs for documents
+        // ✅ Pre-signed URL for profile photo
+        profile_photo_url: profilePhotoUrl,
         reviews
       }
     });
@@ -497,9 +543,19 @@ router.get('/consultations', authenticateUser, async (req, res) => {
 
     const [consultations] = await pool.execute(query, params);
 
+    // ✅ Generate pre-signed URLs for advocate profile photos in consultations
+    const consultationsWithPresignedUrls = await Promise.all(
+      consultations.map(async (consultation) => {
+        if (consultation.profile_photo_url) {
+          consultation.profile_photo_url = await generatePresignedUrl(consultation.profile_photo_url);
+        }
+        return consultation;
+      })
+    );
+
     return res.json({
       success: true,
-      consultations
+      consultations: consultationsWithPresignedUrls
     });
   } catch (error) {
     console.error('Get consultations error:', error);
