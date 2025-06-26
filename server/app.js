@@ -68,6 +68,170 @@ app.use('/api/advocate-auth', advocateAuthRoutes);
 app.use('/api/advocate-chat', advocateChat);
 app.use(ttsRoute);
 
+// ✅ Debug route to check advocates
+app.get('/debug/advocates', async (req, res) => {
+  try {
+    const { pool } = require('./src/config/database');
+    const [advocates] = await pool.execute('SELECT * FROM advocates');
+    res.json({
+      success: true,
+      count: advocates.length,
+      advocates: advocates.map(a => ({
+        id: a.id,
+        name: a.full_name,
+        email: a.email,
+        status: a.status,
+        is_online: a.is_online,
+        created_at: a.created_at
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ✅ Admin route to approve advocates (improved)
+app.patch('/admin/advocates/:advocateId/status', async (req, res) => {
+  try {
+    const { advocateId } = req.params;
+    const { status } = req.body;
+    const { pool } = require('./src/config/database');
+
+    console.log(`🔧 Admin: Updating advocate ${advocateId} status to: ${status}`);
+
+    if (!['approved', 'rejected', 'suspended', 'pending'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid status. Must be: approved, rejected, suspended, or pending'
+      });
+    }
+
+    // Check if advocate exists first
+    const [existing] = await pool.execute(
+      'SELECT id, full_name, email, status FROM advocates WHERE id = ?',
+      [advocateId]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `Advocate with ID ${advocateId} not found`
+      });
+    }
+
+    console.log(`📋 Current advocate: ${existing[0].full_name} (${existing[0].email}) - Status: ${existing[0].status}`);
+
+    // Update advocate status
+    const [result] = await pool.execute(
+      'UPDATE advocates SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [status, advocateId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to update advocate status'
+      });
+    }
+
+    // Get updated advocate info
+    const [updated] = await pool.execute(
+      'SELECT id, full_name, email, status, updated_at FROM advocates WHERE id = ?',
+      [advocateId]
+    );
+
+    console.log(`✅ Successfully updated advocate ${advocateId} to status: ${status}`);
+
+    res.json({
+      success: true,
+      message: `Advocate ${status} successfully`,
+      advocate: updated[0]
+    });
+  } catch (error) {
+    console.error('❌ Admin status update error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update advocate status: ' + error.message
+    });
+  }
+});
+
+// ✅ Admin route to get all advocates with detailed info
+app.get('/admin/advocates', async (req, res) => {
+  try {
+    const { pool } = require('./src/config/database');
+    const [advocates] = await pool.execute(`
+      SELECT 
+        id, full_name, email, phone, bar_council_number, experience,
+        specializations, languages, consultation_fee, rating, 
+        total_consultations, is_online, status, city, state,
+        created_at, updated_at
+      FROM advocates 
+      ORDER BY created_at DESC
+    `);
+
+    const formattedAdvocates = advocates.map(advocate => ({
+      ...advocate,
+      specializations: JSON.parse(advocate.specializations || '[]'),
+      languages: JSON.parse(advocate.languages || '[]')
+    }));
+
+    res.json({
+      success: true,
+      count: advocates.length,
+      advocates: formattedAdvocates
+    });
+  } catch (error) {
+    console.error('❌ Admin get advocates error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ✅ Bulk approve all pending advocates (for testing)
+app.post('/admin/advocates/approve-all', async (req, res) => {
+  try {
+    const { pool } = require('./src/config/database');
+    
+    // Get all pending advocates
+    const [pending] = await pool.execute(
+      'SELECT id, full_name, email FROM advocates WHERE status = "pending"'
+    );
+
+    if (pending.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No pending advocates to approve',
+        approved: []
+      });
+    }
+
+    // Approve all pending advocates
+    const [result] = await pool.execute(
+      'UPDATE advocates SET status = "approved", updated_at = CURRENT_TIMESTAMP WHERE status = "pending"'
+    );
+
+    console.log(`✅ Bulk approved ${result.affectedRows} advocates`);
+
+    res.json({
+      success: true,
+      message: `Successfully approved ${result.affectedRows} advocates`,
+      approved: pending.map(a => ({ id: a.id, name: a.full_name, email: a.email }))
+    });
+  } catch (error) {
+    console.error('❌ Bulk approve error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // ✅ Ensure upload directories exist
 const uploadDirs = [
   'uploads',
@@ -101,31 +265,6 @@ app.get('/health', (req, res) => {
 // ✅ Root route
 app.get('/', (req, res) => {
   res.send('LegalSetu backend with Advocate Chat is running!');
-});
-
-// ✅ Debug route to check advocates
-app.get('/debug/advocates', async (req, res) => {
-  try {
-    const { pool } = require('./src/config/database');
-    const [advocates] = await pool.execute('SELECT * FROM advocates');
-    res.json({
-      success: true,
-      count: advocates.length,
-      advocates: advocates.map(a => ({
-        id: a.id,
-        name: a.full_name,
-        email: a.email,
-        status: a.status,
-        is_online: a.is_online,
-        created_at: a.created_at
-      }))
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
 });
 
 // ✅ Error handler
@@ -171,6 +310,7 @@ Promise.all([
     console.log(`📋 Forms API: Available at /api/forms`);
     console.log(`⚖️  Advocate API: Available at /api/advocate-auth & /api/advocate-chat`);
     console.log(`🔍 Debug: Available at /debug/advocates`);
+    console.log(`👨‍💼 Admin: Available at /admin/advocates`);
   });
 }).catch((error) => {
   console.error('❌ Failed to start server:', error);
