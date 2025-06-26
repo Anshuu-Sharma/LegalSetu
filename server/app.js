@@ -103,6 +103,31 @@ app.get('/', (req, res) => {
   res.send('LegalSetu backend with Advocate Chat is running!');
 });
 
+// ✅ Debug route to check advocates
+app.get('/debug/advocates', async (req, res) => {
+  try {
+    const { pool } = require('./src/config/database');
+    const [advocates] = await pool.execute('SELECT * FROM advocates');
+    res.json({
+      success: true,
+      count: advocates.length,
+      advocates: advocates.map(a => ({
+        id: a.id,
+        name: a.full_name,
+        email: a.email,
+        status: a.status,
+        is_online: a.is_online,
+        created_at: a.created_at
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // ✅ Error handler
 app.use((error, req, res, next) => {
   console.error('Unhandled error:', error);
@@ -129,7 +154,7 @@ app.use((error, req, res, next) => {
 });
 
 // ✅ Start server
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 5000;
 
 Promise.all([
   initializeDatabase(),
@@ -145,6 +170,7 @@ Promise.all([
     console.log(`🌐 Google Translate: ${process.env.GOOGLE_API_KEY ? 'Set' : 'MISSING'}`);
     console.log(`📋 Forms API: Available at /api/forms`);
     console.log(`⚖️  Advocate API: Available at /api/advocate-auth & /api/advocate-chat`);
+    console.log(`🔍 Debug: Available at /debug/advocates`);
   });
 }).catch((error) => {
   console.error('❌ Failed to start server:', error);

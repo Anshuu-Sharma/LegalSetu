@@ -27,6 +27,8 @@ router.get('/advocates', authenticateUser, async (req, res) => {
   try {
     const { specialization, language, minRating, maxFee, isOnline } = req.query;
     
+    console.log('Fetching advocates with filters:', { specialization, language, minRating, maxFee, isOnline });
+    
     let query = `
       SELECT 
         id, full_name, specializations, languages, experience,
@@ -64,7 +66,12 @@ router.get('/advocates', authenticateUser, async (req, res) => {
 
     query += ` ORDER BY is_online DESC, rating DESC, total_consultations DESC`;
 
+    console.log('Executing query:', query);
+    console.log('With params:', params);
+
     const [advocates] = await pool.execute(query, params);
+
+    console.log(`Found ${advocates.length} advocates`);
 
     const formattedAdvocates = advocates.map(advocate => ({
       ...advocate,
@@ -135,6 +142,8 @@ router.post('/consultations/start', authenticateUser, async (req, res) => {
     const { advocateId, consultationType = 'chat' } = req.body;
     const userId = req.user.userId || req.user.advocateId;
 
+    console.log('Starting consultation:', { advocateId, userId, consultationType });
+
     if (!advocateId) {
       return res.status(400).json({
         success: false,
@@ -185,6 +194,8 @@ router.post('/consultations/start', authenticateUser, async (req, res) => {
         consultation_id, user_id, advocate_id, status
       ) VALUES (?, ?, ?, 'active')
     `, [consultationId, userId, advocateId]);
+
+    console.log('Consultation created with ID:', consultationId);
 
     res.json({
       success: true,

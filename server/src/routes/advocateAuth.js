@@ -72,6 +72,17 @@ router.post('/register', (req, res) => {
         state
       } = req.body;
 
+      console.log('Registration data received:', {
+        fullName,
+        email,
+        phone,
+        barCouncilNumber,
+        experience,
+        consultationFee,
+        city,
+        state
+      });
+
       // Validation
       if (!fullName || !email || !password || !phone || !barCouncilNumber || !experience || !consultationFee) {
         return res.status(400).json({
@@ -111,8 +122,8 @@ router.post('/register', (req, res) => {
           full_name, email, password, phone, bar_council_number,
           experience, specializations, languages, education,
           courts_practicing, consultation_fee, bio, city, state,
-          profile_photo_url, document_urls, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+          profile_photo_url, document_urls, status, is_online
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', false)
       `, [
         fullName, email, hashedPassword, phone, barCouncilNumber,
         parseInt(experience), JSON.stringify(specializationsArray),
@@ -120,6 +131,8 @@ router.post('/register', (req, res) => {
         JSON.stringify(courtsPracticingArray), parseFloat(consultationFee),
         bio || '', city || '', state || '', profilePhotoUrl, JSON.stringify(documentUrls)
       ]);
+
+      console.log('Advocate registered with ID:', result.insertId);
 
       const token = jwt.sign(
         { advocateId: result.insertId, email, type: 'advocate' },
@@ -191,6 +204,12 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // Update last seen and online status
+    await pool.execute(
+      'UPDATE advocates SET last_seen = CURRENT_TIMESTAMP, is_online = true WHERE id = ?',
+      [advocate.id]
+    );
+
     const token = jwt.sign(
       { advocateId: advocate.id, email: advocate.email, type: 'advocate' },
       process.env.JWT_SECRET || 'fallback-secret',
@@ -210,7 +229,7 @@ router.post('/login', async (req, res) => {
         consultationFee: advocate.consultation_fee,
         rating: advocate.rating,
         totalConsultations: advocate.total_consultations,
-        isOnline: advocate.is_online,
+        isOnline: true,
         profilePhotoUrl: advocate.profile_photo_url,
         status: advocate.status
       }
@@ -303,20 +322,69 @@ router.patch('/approve/:advocateId', async (req, res) => {
       });
     }
 
-    await pool.execute(
-      'UPDATE advocates SET status = ? WHERE id = ?',
+    // Update advocate status
+    const [result] = await pool.execute(
+      'UPDATE advocates SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [status, advocateId]
     );
 
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Advocate not found'
+      });
+    }
+
+    // Get updated advocate info
+    const [advocates] = await pool.execute(
+      'SELECT id, full_name, email, status FROM advocates WHERE id = ?',
+      [advocateId]
+    );
+
+    console.log(`Advocate ${advocateId} status updated to: ${status}`);
+
     res.json({
       success: true,
-      message: `Advocate ${status} successfully`
+      message: `Advocate ${status} successfully`,
+      advocate: advocates[0]
     });
   } catch (error) {
     console.error('Approve advocate error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to update advocate status: ' + error.message
+    });
+  }
+});
+
+// Get all advocates (for admin)
+router.get('/all', async (req, res) => {
+  try {
+    const [advocates] = await pool.execute(`
+      SELECT 
+        id, full_name, email, phone, bar_council_number, experience,
+        specializations, languages, consultation_fee, rating, 
+        total_consultations, is_online, status, city, state,
+        created_at, updated_at
+      FROM advocates 
+      ORDER BY created_at DESC
+    `);
+
+    const formattedAdvocates = advocates.map(advocate => ({
+      ...advocate,
+      specializations: JSON.parse(advocate.specializations || '[]'),
+      languages: JSON.parse(advocate.languages || '[]')
+    }));
+
+    res.json({
+      success: true,
+      advocates: formattedAdvocates
+    });
+  } catch (error) {
+    console.error('Get all advocates error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get advocates: ' + error.message
     });
   }
 });
