@@ -16,7 +16,7 @@ const authenticateUser = async (req, res, next) => {
 
     console.log('🔍 Advocate chat - verifying token...');
     
-    // Try Firebase token first (simple decode without verification)
+    // Try Firebase token first (simple decode without verification for development)
     try {
       const parts = token.split('.');
       if (parts.length === 3) {
@@ -25,11 +25,13 @@ const authenticateUser = async (req, res, next) => {
         console.log('🔍 Token payload check:', {
           hasEmail: !!payload.email,
           email: payload.email,
-          hasIss: !!payload.iss
+          hasIss: !!payload.iss,
+          exp: payload.exp,
+          iat: payload.iat
         });
         
-        // If it has an email and looks like a Firebase token, process it
-        if (payload.email) {
+        // Basic validation for Firebase token
+        if (payload.email && payload.iss && payload.iss.includes('securetoken.google.com')) {
           console.log('✅ Firebase-like token detected for:', payload.email);
           
           // Check if user exists in database
@@ -40,10 +42,10 @@ const authenticateUser = async (req, res, next) => {
           
           if (users.length === 0) {
             console.log('🆕 Creating new user for advocate chat:', payload.email);
-            // Create user if doesn't exist
+            // Create user if doesn't exist - with default password
             const [result] = await pool.execute(
-              'INSERT INTO users (email, name, preferred_language) VALUES (?, ?, ?)',
-              [payload.email, payload.name || payload.email.split('@')[0], 'en']
+              'INSERT INTO users (email, name, preferred_language, password) VALUES (?, ?, ?, ?)',
+              [payload.email, payload.name || payload.email.split('@')[0], 'en', 'firebase_user']
             );
             
             req.user = {

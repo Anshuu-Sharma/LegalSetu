@@ -64,6 +64,7 @@ const AdvocateChat: React.FC = () => {
   const [error, setError] = useState('');
   const [authError, setAuthError] = useState('');
   const [authReady, setAuthReady] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [filters, setFilters] = useState({
     specialization: '',
     language: '',
@@ -88,7 +89,7 @@ const AdvocateChat: React.FC = () => {
   const getAuthToken = async () => {
     try {
       if (auth.currentUser) {
-        const token = await auth.currentUser.getIdToken(true); // Force refresh
+        const token = await auth.currentUser.getIdToken(true);
         console.log('🔑 Firebase token obtained for:', auth.currentUser.email);
         return token;
       } else {
@@ -112,19 +113,21 @@ const AdvocateChat: React.FC = () => {
       
       if (user) {
         console.log('✅ User is authenticated:', user.email);
+        setCurrentUser(user);
         setAuthError('');
         setAuthReady(true);
         
-        // Wait a bit for token to be ready
-        setTimeout(() => {
-          fetchAdvocates();
-          fetchConsultations();
+        // Wait for token to be ready and fetch data
+        setTimeout(async () => {
+          await fetchAdvocates();
+          await fetchConsultations();
         }, 1000);
       } else {
         console.log('❌ User is not authenticated');
         setAuthError('Please login to access advocate chat');
         setAdvocatesLoading(false);
         setAuthReady(false);
+        setCurrentUser(null);
       }
     });
 
@@ -133,10 +136,10 @@ const AdvocateChat: React.FC = () => {
 
   // Refetch when filters change (only if auth is ready)
   useEffect(() => {
-    if (authReady && auth.currentUser) {
+    if (authReady && currentUser) {
       fetchAdvocates();
     }
-  }, [filters, authReady]);
+  }, [filters, authReady, currentUser]);
 
   useEffect(() => {
     if (activeConsultation) {
@@ -157,7 +160,7 @@ const AdvocateChat: React.FC = () => {
   };
 
   const fetchAdvocates = async () => {
-    if (!authReady || !auth.currentUser) {
+    if (!authReady || !currentUser) {
       console.log('⏳ Auth not ready, skipping advocate fetch');
       return;
     }
@@ -170,6 +173,7 @@ const AdvocateChat: React.FC = () => {
       const token = await getAuthToken();
       if (!token) {
         console.log('❌ No token available');
+        setAuthError('Failed to get authentication token');
         return;
       }
 
@@ -193,6 +197,14 @@ const AdvocateChat: React.FC = () => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Response error:', errorText);
+        
+        if (response.status === 401) {
+          setAuthError('Authentication failed. Please refresh and login again.');
+          // Force re-authentication
+          await auth.signOut();
+          return;
+        }
+        
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
@@ -215,7 +227,7 @@ const AdvocateChat: React.FC = () => {
   };
 
   const fetchConsultations = async () => {
-    if (!authReady || !auth.currentUser) return;
+    if (!authReady || !currentUser) return;
 
     try {
       const token = await getAuthToken();
