@@ -342,7 +342,7 @@ router.get('/advocates/:advocateId/reviews', authenticateUser, async (req, res) 
   try {
     const { advocateId } = req.params;
     const { page = 1, limit = 10 } = req.query;
-    const offset = (page - 1) * limit;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
 
     // ✅ FIXED: Use proper column aliasing to avoid ambiguity
     const [reviews] = await pool.execute(`
@@ -518,6 +518,8 @@ router.post('/messages', authenticateUser, async (req, res) => {
     const senderId = req.user.userId || req.user.advocateId;
     const senderType = req.user.type || 'user';
 
+    console.log('📤 Processing message send:', { consultationId, senderId, senderType, messageLength: message?.length });
+
     if (!consultationId || !message) {
       return res.status(400).json({
         success: false,
@@ -532,11 +534,14 @@ router.post('/messages', authenticateUser, async (req, res) => {
     `, [consultationId, senderId, senderId]);
 
     if (consultations.length === 0) {
+      console.error('❌ Consultation access denied:', { consultationId, senderId });
       return res.status(403).json({
         success: false,
         error: 'Access denied or consultation not found'
       });
     }
+
+    console.log('✅ Consultation access verified');
 
     // Insert message
     const [result] = await pool.execute(`
@@ -545,12 +550,16 @@ router.post('/messages', authenticateUser, async (req, res) => {
       ) VALUES (?, ?, ?, ?, ?)
     `, [consultationId, senderId, senderType, message, messageType]);
 
+    console.log('✅ Message inserted with ID:', result.insertId);
+
     // Update chat room last message
     await pool.execute(`
       UPDATE chat_rooms 
       SET last_message = ?, last_message_time = CURRENT_TIMESTAMP
       WHERE consultation_id = ?
     `, [message, consultationId]);
+
+    console.log('✅ Chat room updated');
 
     return res.json({
       success: true,
@@ -565,7 +574,7 @@ router.post('/messages', authenticateUser, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Send message error:', error);
+    console.error('❌ Send message error:', error);
     return res.status(500).json({ 
       success: false, 
       error: 'Failed to send message: ' + error.message 
@@ -573,13 +582,21 @@ router.post('/messages', authenticateUser, async (req, res) => {
   }
 });
 
-// Get messages for consultation
+// ✅ FIXED: Get messages for consultation with proper parameter handling
 router.get('/consultations/:consultationId/messages', authenticateUser, async (req, res) => {
   try {
     const { consultationId } = req.params;
-    const { page = 1, limit = 50 } = req.query;
-    const offset = (page - 1) * limit;
+    const { page = '1', limit = '50' } = req.query;
     const userId = req.user.userId || req.user.advocateId;
+
+    console.log('📨 Fetching messages for consultation:', { consultationId, userId, page, limit });
+
+    // ✅ FIXED: Ensure parameters are properly converted to integers
+    const pageNum = parseInt(page as string, 10) || 1;
+    const limitNum = parseInt(limit as string, 10) || 50;
+    const offset = (pageNum - 1) * limitNum;
+
+    console.log('📊 Query parameters:', { pageNum, limitNum, offset });
 
     // Verify access
     const [consultations] = await pool.execute(`
@@ -588,25 +605,31 @@ router.get('/consultations/:consultationId/messages', authenticateUser, async (r
     `, [consultationId, userId, userId]);
 
     if (consultations.length === 0) {
+      console.error('❌ Access denied to consultation:', consultationId);
       return res.status(403).json({
         success: false,
         error: 'Access denied'
       });
     }
 
+    console.log('✅ Consultation access verified');
+
+    // ✅ FIXED: Use proper integer parameters for LIMIT and OFFSET
     const [messages] = await pool.execute(`
       SELECT * FROM chat_messages 
       WHERE consultation_id = ?
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
-    `, [consultationId, parseInt(limit), offset]);
+    `, [consultationId, limitNum, offset]);
+
+    console.log(`✅ Retrieved ${messages.length} messages`);
 
     return res.json({
       success: true,
       messages: messages.reverse() // Show oldest first
     });
   } catch (error) {
-    console.error('Get messages error:', error);
+    console.error('❌ Get messages error:', error);
     return res.status(500).json({ 
       success: false, 
       error: 'Failed to get messages: ' + error.message 
