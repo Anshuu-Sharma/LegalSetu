@@ -147,10 +147,15 @@ const AdvocateRegistration: React.FC = () => {
 
       if (data.success) {
         setStep(4); // Success step
+        // Store token if provided
+        if (data.token) {
+          localStorage.setItem('advocateToken', data.token);
+        }
       } else {
         setErrors({ submit: data.error || 'Registration failed' });
       }
     } catch (error) {
+      console.error('Registration error:', error);
       setErrors({ submit: 'Network error. Please try again.' });
     } finally {
       setLoading(false);
@@ -506,12 +511,12 @@ const AdvocateRegistration: React.FC = () => {
               name="documents"
               onChange={handleFileChange}
               multiple
-              accept=".pdf,.jpg,.jpeg,.png"
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
               className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            Upload Bar Council Certificate, Degree Certificate, etc. (PDF, JPG, PNG)
+            Upload Bar Council Certificate, Degree Certificate, etc. (PDF, JPG, PNG, DOC, DOCX)
           </p>
         </div>
       </div>
@@ -545,6 +550,12 @@ const AdvocateRegistration: React.FC = () => {
           </div>
         </div>
       </div>
+      <button
+        onClick={() => window.location.href = '/'}
+        className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+      >
+        <LocalizedText text="Return to Home" />
+      </button>
     </div>
   );
 

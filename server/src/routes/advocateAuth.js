@@ -3,19 +3,51 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/database');
-const { uploadS3 } = require('../config/multer-s3');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const router = express.Router();
 
+// Configure multer for file uploads (fallback to local storage)
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = 'uploads/advocates/';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.jpg', '.jpeg', '.png', '.pdf', '.doc', '.docx'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPG, PNG, PDF, DOC, DOCX allowed.'));
+    }
+  }
+});
+
 // Advocate Registration
 router.post('/register', (req, res) => {
-  const uploadMiddleware = uploadS3.fields([
+  const uploadMiddleware = upload.fields([
     { name: 'profilePhoto', maxCount: 1 },
     { name: 'documents', maxCount: 5 }
   ]);
 
   uploadMiddleware(req, res, async (err) => {
     if (err) {
+      console.error('File upload error:', err);
       return res.status(400).json({
         success: false,
         error: err.message || 'File upload failed'
@@ -40,6 +72,14 @@ router.post('/register', (req, res) => {
         state
       } = req.body;
 
+      // Validation
+      if (!fullName || !email || !password || !phone || !barCouncilNumber || !experience || !consultationFee) {
+        return res.status(400).json({
+          success: false,
+          error: 'All required fields must be provided'
+        });
+      }
+
       // Check if advocate already exists
       const [existing] = await pool.execute(
         'SELECT id FROM advocates WHERE email = ? OR bar_council_number = ?',
@@ -57,8 +97,13 @@ router.post('/register', (req, res) => {
       const hashedPassword = await bcrypt.hash(password, 12);
 
       // Handle file uploads
-      const profilePhotoUrl = req.files?.profilePhoto?.[0]?.location || null;
-      const documentUrls = req.files?.documents?.map(file => file.location) || [];
+      const profilePhotoUrl = req.files?.profilePhoto?.[0]?.path || null;
+      const documentUrls = req.files?.documents?.map(file => file.path) || [];
+
+      // Parse arrays from strings
+      const specializationsArray = specializations ? specializations.split(',').map(s => s.trim()) : [];
+      const languagesArray = languages ? languages.split(',').map(l => l.trim()) : [];
+      const courtsPracticingArray = courtsPracticing ? courtsPracticing.split(',').map(c => c.trim()) : [];
 
       // Insert advocate
       const [result] = await pool.execute(`
@@ -70,15 +115,15 @@ router.post('/register', (req, res) => {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
       `, [
         fullName, email, hashedPassword, phone, barCouncilNumber,
-        experience, JSON.stringify(specializations.split(',')),
-        JSON.stringify(languages.split(',')), education,
-        JSON.stringify(courtsPracticing.split(',')), consultationFee,
-        bio, city, state, profilePhotoUrl, JSON.stringify(documentUrls)
+        parseInt(experience), JSON.stringify(specializationsArray),
+        JSON.stringify(languagesArray), education || '',
+        JSON.stringify(courtsPracticingArray), parseFloat(consultationFee),
+        bio || '', city || '', state || '', profilePhotoUrl, JSON.stringify(documentUrls)
       ]);
 
       const token = jwt.sign(
         { advocateId: result.insertId, email, type: 'advocate' },
-        process.env.JWT_SECRET,
+        process.env.JWT_SECRET || 'fallback-secret',
         { expiresIn: '7d' }
       );
 
@@ -97,7 +142,7 @@ router.post('/register', (req, res) => {
       console.error('Advocate registration error:', error);
       res.status(500).json({
         success: false,
-        error: 'Registration failed'
+        error: 'Registration failed: ' + error.message
       });
     }
   });
@@ -142,13 +187,13 @@ router.post('/login', async (req, res) => {
     if (advocate.status !== 'approved') {
       return res.status(403).json({
         success: false,
-        error: 'Your account is not yet approved or has been suspended'
+        error: `Your account status is: ${advocate.status}. Please wait for approval or contact support.`
       });
     }
 
     const token = jwt.sign(
       { advocateId: advocate.id, email: advocate.email, type: 'advocate' },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }
     );
 
@@ -166,14 +211,15 @@ router.post('/login', async (req, res) => {
         rating: advocate.rating,
         totalConsultations: advocate.total_consultations,
         isOnline: advocate.is_online,
-        profilePhotoUrl: advocate.profile_photo_url
+        profilePhotoUrl: advocate.profile_photo_url,
+        status: advocate.status
       }
     });
   } catch (error) {
     console.error('Advocate login error:', error);
     res.status(500).json({
       success: false,
-      error: 'Login failed'
+      error: 'Login failed: ' + error.message
     });
   }
 });
@@ -186,7 +232,7 @@ router.get('/profile', async (req, res) => {
       return res.status(401).json({ success: false, error: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
     if (decoded.type !== 'advocate') {
       return res.status(403).json({ success: false, error: 'Access denied' });
     }
@@ -213,7 +259,7 @@ router.get('/profile', async (req, res) => {
     });
   } catch (error) {
     console.error('Get advocate profile error:', error);
-    res.status(500).json({ success: false, error: 'Failed to get profile' });
+    res.status(500).json({ success: false, error: 'Failed to get profile: ' + error.message });
   }
 });
 
@@ -225,7 +271,7 @@ router.patch('/status', async (req, res) => {
       return res.status(401).json({ success: false, error: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
     if (decoded.type !== 'advocate') {
       return res.status(403).json({ success: false, error: 'Access denied' });
     }
@@ -240,7 +286,38 @@ router.patch('/status', async (req, res) => {
     res.json({ success: true, message: 'Status updated successfully' });
   } catch (error) {
     console.error('Update status error:', error);
-    res.status(500).json({ success: false, error: 'Failed to update status' });
+    res.status(500).json({ success: false, error: 'Failed to update status: ' + error.message });
+  }
+});
+
+// Admin route to approve advocates (for testing)
+router.patch('/approve/:advocateId', async (req, res) => {
+  try {
+    const { advocateId } = req.params;
+    const { status } = req.body; // 'approved', 'rejected', 'suspended'
+
+    if (!['approved', 'rejected', 'suspended'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid status. Must be approved, rejected, or suspended'
+      });
+    }
+
+    await pool.execute(
+      'UPDATE advocates SET status = ? WHERE id = ?',
+      [status, advocateId]
+    );
+
+    res.json({
+      success: true,
+      message: `Advocate ${status} successfully`
+    });
+  } catch (error) {
+    console.error('Approve advocate error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update advocate status: ' + error.message
+    });
   }
 });
 

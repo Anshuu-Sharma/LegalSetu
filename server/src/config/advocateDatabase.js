@@ -3,6 +3,22 @@ const { pool } = require('./database');
 
 const initializeAdvocateDatabase = async () => {
   try {
+    // First, ensure users table exists (required for foreign keys)
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        preferred_language VARCHAR(10) DEFAULT 'en',
+        storage_used BIGINT DEFAULT 0,
+        max_storage BIGINT DEFAULT 1073741824,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_email (email)
+      )
+    `);
+
     // Advocates table
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS advocates (
@@ -33,7 +49,7 @@ const initializeAdvocateDatabase = async () => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_email (email),
         INDEX idx_status (status),
-        INDEX idx_specializations ((CAST(specializations AS CHAR(255)))),
+        INDEX idx_bar_council (bar_council_number),
         INDEX idx_rating (rating),
         INDEX idx_is_online (is_online)
       )
@@ -52,12 +68,12 @@ const initializeAdvocateDatabase = async () => {
         ended_at TIMESTAMP NULL,
         duration_minutes INT DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (advocate_id) REFERENCES advocates(id) ON DELETE CASCADE,
         INDEX idx_user_id (user_id),
         INDEX idx_advocate_id (advocate_id),
         INDEX idx_status (status),
-        INDEX idx_started_at (started_at)
+        INDEX idx_started_at (started_at),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (advocate_id) REFERENCES advocates(id) ON DELETE CASCADE
       )
     `);
 
@@ -72,12 +88,12 @@ const initializeAdvocateDatabase = async () => {
         last_message TEXT,
         last_message_time TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (consultation_id) REFERENCES consultations(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (advocate_id) REFERENCES advocates(id) ON DELETE CASCADE,
         INDEX idx_consultation_id (consultation_id),
         INDEX idx_user_id (user_id),
-        INDEX idx_advocate_id (advocate_id)
+        INDEX idx_advocate_id (advocate_id),
+        FOREIGN KEY (consultation_id) REFERENCES consultations(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (advocate_id) REFERENCES advocates(id) ON DELETE CASCADE
       )
     `);
 
@@ -93,10 +109,10 @@ const initializeAdvocateDatabase = async () => {
         file_url VARCHAR(500),
         is_read BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (consultation_id) REFERENCES consultations(id) ON DELETE CASCADE,
         INDEX idx_consultation_id (consultation_id),
         INDEX idx_sender (sender_id, sender_type),
-        INDEX idx_created_at (created_at)
+        INDEX idx_created_at (created_at),
+        FOREIGN KEY (consultation_id) REFERENCES consultations(id) ON DELETE CASCADE
       )
     `);
 
@@ -110,12 +126,12 @@ const initializeAdvocateDatabase = async () => {
         rating DECIMAL(2,1) NOT NULL CHECK (rating >= 1 AND rating <= 5),
         review_text TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (consultation_id) REFERENCES consultations(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (advocate_id) REFERENCES advocates(id) ON DELETE CASCADE,
         UNIQUE KEY unique_review (consultation_id, user_id),
         INDEX idx_advocate_id (advocate_id),
-        INDEX idx_rating (rating)
+        INDEX idx_rating (rating),
+        FOREIGN KEY (consultation_id) REFERENCES consultations(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (advocate_id) REFERENCES advocates(id) ON DELETE CASCADE
       )
     `);
 
@@ -129,9 +145,9 @@ const initializeAdvocateDatabase = async () => {
         end_time TIME NOT NULL,
         is_available BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (advocate_id) REFERENCES advocates(id) ON DELETE CASCADE,
         INDEX idx_advocate_id (advocate_id),
-        INDEX idx_day_of_week (day_of_week)
+        INDEX idx_day_of_week (day_of_week),
+        FOREIGN KEY (advocate_id) REFERENCES advocates(id) ON DELETE CASCADE
       )
     `);
 
@@ -148,13 +164,13 @@ const initializeAdvocateDatabase = async () => {
         status ENUM('pending', 'completed', 'failed') DEFAULT 'pending',
         payment_gateway_id VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-        FOREIGN KEY (advocate_id) REFERENCES advocates(id) ON DELETE SET NULL,
-        FOREIGN KEY (consultation_id) REFERENCES consultations(id) ON DELETE SET NULL,
         INDEX idx_user_id (user_id),
         INDEX idx_advocate_id (advocate_id),
         INDEX idx_consultation_id (consultation_id),
-        INDEX idx_status (status)
+        INDEX idx_status (status),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+        FOREIGN KEY (advocate_id) REFERENCES advocates(id) ON DELETE SET NULL,
+        FOREIGN KEY (consultation_id) REFERENCES consultations(id) ON DELETE SET NULL
       )
     `);
 

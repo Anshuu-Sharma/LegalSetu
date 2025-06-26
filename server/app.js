@@ -8,7 +8,6 @@ const socketIo = require('socket.io');
 
 const { initializeDatabase } = require('./src/config/database');
 const { initializeAdvocateDatabase } = require('./src/config/advocateDatabase');
-const { testS3Connection } = require('./src/config/s3');
 
 const analyzeRoutes = require('./analyze');
 const translationRoutes = require('./index');
@@ -16,7 +15,7 @@ const formsRoutes = require('./src/routes/forms');
 const ttsRoute = require('./src/routes/tts');
 const lawyerRoutes = require('./src/routes/lawyerRoutes');
 const advocateAuthRoutes = require('./src/routes/advocateAuth');
-const advocateChatRoutes = require('./src/routes/advocateChat');
+const advocateChat = require('./src/routes/advocateChat');
 
 const app = express();
 const server = http.createServer(app);
@@ -34,11 +33,12 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // ✅ CORS
 app.use(cors({
   origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// ✅ Serve static audio files
+// ✅ Serve static files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads/audio', express.static(path.join(__dirname, 'uploads/audio')));
 
 // ✅ Socket.IO for real-time chat
@@ -59,16 +59,14 @@ io.on('connection', (socket) => {
   });
 });
 
-// ✅ TTS Route
-app.use(ttsRoute);
-
-// ✅ Other routes
+// ✅ Routes
 app.use('/api', analyzeRoutes);
 app.use('/api', translationRoutes);
 app.use('/api/forms', formsRoutes);
 app.use('/api/lawyers', lawyerRoutes);
 app.use('/api/advocate-auth', advocateAuthRoutes);
-app.use('/api/advocate-chat', advocateChatRoutes);
+app.use('/api/advocate-chat', advocateChat);
+app.use(ttsRoute);
 
 // ✅ Ensure upload directories exist
 const uploadDirs = [
@@ -76,7 +74,8 @@ const uploadDirs = [
   'uploads/users',
   'uploads/forms',
   'uploads/filled',
-  'uploads/audio'
+  'uploads/audio',
+  'uploads/advocates'
 ];
 uploadDirs.forEach(dir => {
   if (!fs.existsSync(dir)) {
@@ -92,14 +91,14 @@ app.get('/health', (req, res) => {
     uptime: process.uptime(),
     services: {
       database: 'connected',
-      s3: process.env.AWS_ACCESS_KEY_ID ? 'configured' : 'not configured',
       gemini: process.env.GEMINI_API_KEY ? 'configured' : 'not configured',
-      socketio: 'active'
+      socketio: 'active',
+      advocateSystem: 'active'
     }
   });
 });
 
-// ✅ Root route for health check or friendly message
+// ✅ Root route
 app.get('/', (req, res) => {
   res.send('LegalSetu backend with Advocate Chat is running!');
 });
@@ -115,7 +114,7 @@ app.use((error, req, res, next) => {
     });
   }
 
-  if (error.message.includes('CORS')) {
+  if (error.message && error.message.includes('CORS')) {
     return res.status(403).json({
       success: false,
       error: 'CORS policy violation'
@@ -134,16 +133,14 @@ const PORT = process.env.PORT || 4000;
 
 Promise.all([
   initializeDatabase(),
-  initializeAdvocateDatabase(),
-  testS3Connection()
+  initializeAdvocateDatabase()
 ]).then(() => {
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ LegalBot backend with Advocate Chat running on port ${PORT}`);
     console.log(`📊 Database: Connected`);
     console.log(`👩‍⚖️ Advocate System: Initialized`);
     console.log(`🔌 Socket.IO: Active`);
-    console.log(`☁️  S3 Storage: ${process.env.AWS_S3_BUCKET_NAME ? 'Configured' : 'Not configured'}`);
-    console.log(`🔐 JWT Secret: ${process.env.JWT_SECRET ? 'Set' : 'MISSING'}`);
+    console.log(`🔐 JWT Secret: ${process.env.JWT_SECRET ? 'Set' : 'Using fallback'}`);
     console.log(`🤖 Gemini API: ${process.env.GEMINI_API_KEY ? 'Set' : 'MISSING'}`);
     console.log(`🌐 Google Translate: ${process.env.GOOGLE_API_KEY ? 'Set' : 'MISSING'}`);
     console.log(`📋 Forms API: Available at /api/forms`);

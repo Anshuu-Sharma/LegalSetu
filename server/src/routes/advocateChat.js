@@ -5,7 +5,7 @@ const { pool } = require('../config/database');
 
 const router = express.Router();
 
-// Middleware to authenticate users
+// Middleware to authenticate users and advocates
 const authenticateUser = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -13,10 +13,11 @@ const authenticateUser = async (req, res, next) => {
       return res.status(401).json({ success: false, error: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
     req.user = decoded;
     next();
   } catch (error) {
+    console.error('Authentication error:', error);
     res.status(401).json({ success: false, error: 'Invalid token' });
   }
 };
@@ -77,7 +78,7 @@ router.get('/advocates', authenticateUser, async (req, res) => {
     });
   } catch (error) {
     console.error('Get advocates error:', error);
-    res.status(500).json({ success: false, error: 'Failed to get advocates' });
+    res.status(500).json({ success: false, error: 'Failed to get advocates: ' + error.message });
   }
 });
 
@@ -124,7 +125,7 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
     });
   } catch (error) {
     console.error('Get advocate details error:', error);
-    res.status(500).json({ success: false, error: 'Failed to get advocate details' });
+    res.status(500).json({ success: false, error: 'Failed to get advocate details: ' + error.message });
   }
 });
 
@@ -134,23 +135,40 @@ router.post('/consultations/start', authenticateUser, async (req, res) => {
     const { advocateId, consultationType = 'chat' } = req.body;
     const userId = req.user.userId || req.user.advocateId;
 
+    if (!advocateId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Advocate ID is required'
+      });
+    }
+
     // Check if advocate is available
     const [advocates] = await pool.execute(
-      'SELECT * FROM advocates WHERE id = ? AND status = "approved" AND is_online = true',
+      'SELECT * FROM advocates WHERE id = ? AND status = "approved"',
       [advocateId]
     );
 
     if (advocates.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'Advocate is not available'
+        error: 'Advocate is not available or not found'
       });
     }
 
     const advocate = advocates[0];
 
-    // Check if user has sufficient balance (implement wallet system)
-    // For now, we'll skip this check
+    // Check if user exists
+    const [users] = await pool.execute(
+      'SELECT id FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (users.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
 
     // Create consultation session
     const [result] = await pool.execute(`
@@ -181,7 +199,7 @@ router.post('/consultations/start', authenticateUser, async (req, res) => {
     });
   } catch (error) {
     console.error('Start consultation error:', error);
-    res.status(500).json({ success: false, error: 'Failed to start consultation' });
+    res.status(500).json({ success: false, error: 'Failed to start consultation: ' + error.message });
   }
 });
 
@@ -227,7 +245,7 @@ router.get('/consultations', authenticateUser, async (req, res) => {
     });
   } catch (error) {
     console.error('Get consultations error:', error);
-    res.status(500).json({ success: false, error: 'Failed to get consultations' });
+    res.status(500).json({ success: false, error: 'Failed to get consultations: ' + error.message });
   }
 });
 
@@ -237,6 +255,13 @@ router.post('/messages', authenticateUser, async (req, res) => {
     const { consultationId, message, messageType = 'text' } = req.body;
     const senderId = req.user.userId || req.user.advocateId;
     const senderType = req.user.type || 'user';
+
+    if (!consultationId || !message) {
+      return res.status(400).json({
+        success: false,
+        error: 'Consultation ID and message are required'
+      });
+    }
 
     // Verify consultation exists and user has access
     const [consultations] = await pool.execute(`
@@ -279,7 +304,7 @@ router.post('/messages', authenticateUser, async (req, res) => {
     });
   } catch (error) {
     console.error('Send message error:', error);
-    res.status(500).json({ success: false, error: 'Failed to send message' });
+    res.status(500).json({ success: false, error: 'Failed to send message: ' + error.message });
   }
 });
 
@@ -317,7 +342,7 @@ router.get('/consultations/:consultationId/messages', authenticateUser, async (r
     });
   } catch (error) {
     console.error('Get messages error:', error);
-    res.status(500).json({ success: false, error: 'Failed to get messages' });
+    res.status(500).json({ success: false, error: 'Failed to get messages: ' + error.message });
   }
 });
 
@@ -360,7 +385,7 @@ router.patch('/consultations/:consultationId/end', authenticateUser, async (req,
     });
   } catch (error) {
     console.error('End consultation error:', error);
-    res.status(500).json({ success: false, error: 'Failed to end consultation' });
+    res.status(500).json({ success: false, error: 'Failed to end consultation: ' + error.message });
   }
 });
 
@@ -374,6 +399,13 @@ router.post('/reviews', authenticateUser, async (req, res) => {
       return res.status(403).json({
         success: false,
         error: 'Advocates cannot submit reviews'
+      });
+    }
+
+    if (!consultationId || !advocateId || !rating) {
+      return res.status(400).json({
+        success: false,
+        error: 'Consultation ID, advocate ID, and rating are required'
       });
     }
 
@@ -408,7 +440,7 @@ router.post('/reviews', authenticateUser, async (req, res) => {
       INSERT INTO advocate_reviews (
         consultation_id, user_id, advocate_id, rating, review_text
       ) VALUES (?, ?, ?, ?, ?)
-    `, [consultationId, userId, advocateId, rating, reviewText]);
+    `, [consultationId, userId, advocateId, rating, reviewText || '']);
 
     // Update advocate's average rating
     const [ratingStats] = await pool.execute(`
@@ -429,7 +461,7 @@ router.post('/reviews', authenticateUser, async (req, res) => {
     });
   } catch (error) {
     console.error('Submit review error:', error);
-    res.status(500).json({ success: false, error: 'Failed to submit review' });
+    res.status(500).json({ success: false, error: 'Failed to submit review: ' + error.message });
   }
 });
 
