@@ -6,6 +6,7 @@ import {
   Bell, Settings, Users, Calendar, TrendingUp
 } from 'lucide-react';
 import LocalizedText from './LocalizedText';
+import { io, Socket } from 'socket.io-client';
 
 interface AdvocateData {
   id: number;
@@ -60,6 +61,12 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
   const [loading, setLoading] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [error, setError] = useState('');
+  const [isConnected, setIsConnected] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper function to safely format rating
   const formatRating = (rating: any): string => {
@@ -82,6 +89,110 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
     return localStorage.getItem('advocateToken');
   };
 
+  // ✅ ADDED: Initialize Socket.IO connection for advocates
+  useEffect(() => {
+    if (advocateData?.id) {
+      console.log('🔌 Initializing Socket.IO connection for advocate...');
+      
+      const socket = io(import.meta.env.VITE_API_URL, {
+        transports: ['websocket', 'polling'],
+        timeout: 20000,
+      });
+
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        console.log('✅ Advocate Socket.IO connected');
+        setIsConnected(true);
+        
+        // Join advocate room for real-time notifications
+        socket.emit('join-room', {
+          userId: advocateData.id,
+          userType: 'advocate'
+        });
+      });
+
+      socket.on('disconnect', () => {
+        console.log('❌ Advocate Socket.IO disconnected');
+        setIsConnected(false);
+      });
+
+      // ✅ ADDED: Listen for new consultations
+      socket.on('new-consultation', (data) => {
+        console.log('🆕 New consultation received:', data);
+        fetchConsultations(); // Refresh consultations list
+      });
+
+      // ✅ ADDED: Listen for new messages from users
+      socket.on('new-message', (data) => {
+        console.log('📨 New message received by advocate:', data);
+        if (activeConsultation && data.consultationId === activeConsultation.id) {
+          // Only add message if it's from the user (not our own message)
+          if (data.senderType === 'user') {
+            const newMessage: Message = {
+              id: data.id,
+              consultation_id: data.consultationId,
+              sender_id: data.senderId,
+              sender_type: data.senderType,
+              message: data.message,
+              message_type: data.messageType,
+              created_at: data.timestamp,
+              is_read: false
+            };
+            
+            setMessages(prev => {
+              // Check if message already exists to prevent duplicates
+              const exists = prev.some(msg => msg.id === newMessage.id);
+              if (!exists) {
+                return [...prev, newMessage];
+              }
+              return prev;
+            });
+          }
+        }
+      });
+
+      // ✅ ADDED: Listen for typing indicators
+      socket.on('user-typing', (data) => {
+        if (data.userType === 'user') {
+          setTypingUsers(prev => new Set([...prev, `${data.userType}-${data.userId}`]));
+        }
+      });
+
+      socket.on('user-stopped-typing', (data) => {
+        if (data.userType === 'user') {
+          setTypingUsers(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(`${data.userType}-${data.userId}`);
+            return newSet;
+          });
+        }
+      });
+
+      // ✅ ADDED: Listen for consultation ended
+      socket.on('consultation-ended', (data) => {
+        console.log('🔚 Consultation ended by user:', data);
+        if (activeConsultation && data.consultationId === activeConsultation.id) {
+          setActiveConsultation(prev => prev ? { ...prev, status: 'completed' } : null);
+        }
+      });
+
+      return () => {
+        console.log('🔌 Cleaning up advocate Socket.IO connection');
+        socket.disconnect();
+        socketRef.current = null;
+      };
+    }
+  }, [advocateData?.id, activeConsultation]);
+
+  // ✅ ADDED: Join consultation room when active consultation changes
+  useEffect(() => {
+    if (socketRef.current && activeConsultation) {
+      console.log('🏠 Advocate joining consultation room:', activeConsultation.id);
+      socketRef.current.emit('join-consultation', activeConsultation.id);
+    }
+  }, [activeConsultation]);
+
   useEffect(() => {
     fetchConsultations();
     // Set up polling for new consultations
@@ -98,6 +209,10 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
       return () => clearInterval(interval);
     }
   }, [activeConsultation]);
+
+  // useEffect(() => {
+  //   messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // }, [messages]);
 
   const fetchConsultations = async () => {
     try {
@@ -149,6 +264,15 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
     console.log('📤 Advocate sending message:', newMessage);
     setSendingMessage(true);
     
+    // ✅ ADDED: Stop typing indicator
+    if (socketRef.current && activeConsultation) {
+      socketRef.current.emit('typing-stop', {
+        consultationId: activeConsultation.id,
+        userId: advocateData.id,
+        userType: 'advocate'
+      });
+    }
+    
     // Optimistically add the message to the UI
     const tempMessage: Message = {
       id: Date.now(),
@@ -191,6 +315,7 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
 
       if (data.success) {
         console.log('✅ Advocate message sent successfully');
+        // Remove the temporary message and let the real one come through Socket.IO
         setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
         setTimeout(() => {
           fetchMessages(activeConsultation.id);
@@ -215,6 +340,36 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
+    }
+  };
+
+  // ✅ ADDED: Handle typing indicators for advocates
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    
+    // Send typing indicator
+    if (socketRef.current && activeConsultation && e.target.value.trim()) {
+      socketRef.current.emit('typing-start', {
+        consultationId: activeConsultation.id,
+        userId: advocateData.id,
+        userType: 'advocate'
+      });
+      
+      // Clear previous timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Set new timeout to stop typing indicator
+      typingTimeoutRef.current = setTimeout(() => {
+        if (socketRef.current) {
+          socketRef.current.emit('typing-stop', {
+            consultationId: activeConsultation.id,
+            userId: advocateData.id,
+            userType: 'advocate'
+          });
+        }
+      }, 1000);
     }
   };
 
@@ -251,6 +406,13 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
             <span className="text-sm font-medium text-green-700">
               <LocalizedText text="Online" />
+            </span>
+          </div>
+          {/* ✅ ADDED: Connection status indicator */}
+          <div className="flex items-center space-x-2 px-3 py-2 bg-blue-100 rounded-lg">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-blue-500' : 'bg-red-500'}`}></div>
+            <span className="text-sm font-medium text-blue-700">
+              {isConnected ? 'Real-time' : 'Connecting...'}
             </span>
           </div>
           <button
@@ -345,6 +507,8 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
                 onClick={() => {
                   setActiveConsultation(consultation);
                   setView('chat');
+                  // Load messages when switching to chat
+                  fetchMessages(consultation.id);
                 }}
               >
                 <div className="flex items-center justify-between">
@@ -455,6 +619,21 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
             </div>
           ))
         )}
+        
+        {/* ✅ ADDED: Typing Indicator */}
+        {typingUsers.size > 0 && (
+          <div className="flex justify-start">
+            <div className="bg-gray-100 px-4 py-2 rounded-2xl">
+              <div className="flex space-x-1">
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-100"></div>
+                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-200"></div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Message Input */}
@@ -474,7 +653,7 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
           <input
             type="text"
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleInputChange}
             onKeyPress={handleKeyPress}
             placeholder="Type your response..."
             disabled={sendingMessage}

@@ -203,34 +203,50 @@ const AdvocateChat: React.FC = () => {
         ));
       });
 
-      // Listen for new messages
+      // ✅ FIXED: Listen for new messages from advocates
       socket.on('new-message', (data) => {
         console.log('📨 New message received:', data);
         if (activeConsultation && data.consultationId === activeConsultation.id) {
-          setMessages(prev => [...prev, {
-            id: data.id,
-            consultation_id: data.consultationId,
-            sender_id: data.senderId,
-            sender_type: data.senderType,
-            message: data.message,
-            message_type: data.messageType,
-            created_at: data.timestamp,
-            is_read: false
-          }]);
+          // Only add message if it's from the advocate (not our own message)
+          if (data.senderType === 'advocate') {
+            const newMessage: Message = {
+              id: data.id,
+              consultation_id: data.consultationId,
+              sender_id: data.senderId,
+              sender_type: data.senderType,
+              message: data.message,
+              message_type: data.messageType,
+              created_at: data.timestamp,
+              is_read: false
+            };
+            
+            setMessages(prev => {
+              // Check if message already exists to prevent duplicates
+              const exists = prev.some(msg => msg.id === newMessage.id);
+              if (!exists) {
+                return [...prev, newMessage];
+              }
+              return prev;
+            });
+          }
         }
       });
 
       // Listen for typing indicators
       socket.on('user-typing', (data) => {
-        setTypingUsers(prev => new Set([...prev, `${data.userType}-${data.userId}`]));
+        if (data.userType === 'advocate') {
+          setTypingUsers(prev => new Set([...prev, `${data.userType}-${data.userId}`]));
+        }
       });
 
       socket.on('user-stopped-typing', (data) => {
-        setTypingUsers(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(`${data.userType}-${data.userId}`);
-          return newSet;
-        });
+        if (data.userType === 'advocate') {
+          setTypingUsers(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(`${data.userType}-${data.userId}`);
+            return newSet;
+          });
+        }
       });
 
       // Listen for consultation ended
@@ -433,8 +449,6 @@ const AdvocateChat: React.FC = () => {
       if (data.success) {
         setMessages(data.messages);
         console.log('📨 Messages loaded:', data.messages.length);
-      } else {
-        console.error('❌ Failed to fetch messages:', data.error);
       }
     } catch (error) {
       console.error('❌ Error fetching messages:', error);
@@ -489,6 +503,9 @@ const AdvocateChat: React.FC = () => {
         setActiveConsultation(newConsultation);
         setView('chat');
         setMessages([]);
+        
+        // Fetch existing messages for this consultation
+        await fetchMessages(newConsultation.id);
         
         console.log('✅ Successfully transitioned to chat view');
       } else {
@@ -571,8 +588,10 @@ const AdvocateChat: React.FC = () => {
 
       if (data.success) {
         console.log('✅ Message sent successfully');
+        // Remove the temporary message and let the real one come through Socket.IO
         setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
         
+        // Fetch messages to ensure we have the latest
         setTimeout(() => {
           fetchMessages(activeConsultation.id);
         }, 100);
@@ -651,6 +670,17 @@ const AdvocateChat: React.FC = () => {
       setShowProfileModal(true);
     }
   };
+
+  // ✅ FIXED: Load messages when switching to chat view
+  useEffect(() => {
+    if (view === 'chat' && activeConsultation) {
+       fetchMessages(activeConsultation.id);
+      const interval = setInterval(() => {
+        fetchMessages(activeConsultation.id);
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [view, activeConsultation]);
 
   const filteredAdvocates = advocates.filter(advocate =>
     advocate.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
