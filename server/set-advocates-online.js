@@ -21,13 +21,15 @@ async function setAdvocatesOnline() {
   try {
     console.log('🔄 Setting advocates online for testing...');
     
-    // Get all approved advocates
+    // ✅ FIXED: Get all approved advocates using parameterized query
     const [advocates] = await pool.execute(
-      'SELECT id, full_name, email, status FROM advocates WHERE status = "approved"'
+      'SELECT id, full_name, email, status FROM advocates WHERE status = ?',
+      ['approved']  // ✅ Fixed: Use parameterized query instead of string literal
     );
     
     if (advocates.length === 0) {
       console.log('❌ No approved advocates found. Run approve script first.');
+      console.log('💡 Try running: curl -X POST http://localhost:5000/admin/advocates/approve-all');
       return;
     }
     
@@ -36,16 +38,18 @@ async function setAdvocatesOnline() {
       console.log(`   - ${advocate.full_name} (${advocate.email}) - ID: ${advocate.id}`);
     });
     
-    // Set all approved advocates online
+    // ✅ FIXED: Set all approved advocates online using parameterized query
     const [result] = await pool.execute(
-      'UPDATE advocates SET is_online = true, last_seen = CURRENT_TIMESTAMP WHERE status = "approved"'
+      'UPDATE advocates SET is_online = true, last_seen = CURRENT_TIMESTAMP WHERE status = ?',
+      ['approved']  // ✅ Fixed: Use parameterized query instead of string literal
     );
     
     console.log(`✅ Set ${result.affectedRows} advocates online`);
     
     // Verify the update
     const [onlineAdvocates] = await pool.execute(
-      'SELECT id, full_name, is_online FROM advocates WHERE status = "approved" AND is_online = true'
+      'SELECT id, full_name, is_online FROM advocates WHERE status = ? AND is_online = true',
+      ['approved']  // ✅ Fixed: Use parameterized query
     );
     
     console.log(`🟢 Online advocates (${onlineAdvocates.length}):`);

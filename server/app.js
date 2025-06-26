@@ -267,19 +267,21 @@ app.post('/admin/advocates/:advocateId/approve', async (req, res) => {
   }
 });
 
-// ✅ NEW: Set advocates online for testing
+// ✅ FIXED: Set advocates online for testing
 app.post('/admin/advocates/set-online', async (req, res) => {
   try {
     const { pool } = require('./src/config/database');
     
     console.log('🔄 Setting advocates online for testing...');
     
-    // Get all approved advocates
+    // ✅ FIXED: Get all approved advocates using parameterized query
     const [advocates] = await pool.execute(
-      'SELECT id, full_name, email FROM advocates WHERE status = "approved"'
+      'SELECT id, full_name, email FROM advocates WHERE status = ?',
+      ['approved']  // ✅ Fixed: Use parameterized query instead of string literal
     );
     
     if (advocates.length === 0) {
+      console.log('ℹ️ No approved advocates found to set online');
       return res.json({
         success: true,
         message: 'No approved advocates found to set online',
@@ -287,9 +289,15 @@ app.post('/admin/advocates/set-online', async (req, res) => {
       });
     }
     
-    // Set all approved advocates online
+    console.log(`📋 Found ${advocates.length} approved advocates to set online:`);
+    advocates.forEach(advocate => {
+      console.log(`   - ${advocate.full_name} (${advocate.email}) - ID: ${advocate.id}`);
+    });
+    
+    // ✅ FIXED: Set all approved advocates online using parameterized query
     const [result] = await pool.execute(
-      'UPDATE advocates SET is_online = true, last_seen = CURRENT_TIMESTAMP WHERE status = "approved"'
+      'UPDATE advocates SET is_online = true, last_seen = CURRENT_TIMESTAMP WHERE status = ?',
+      ['approved']  // ✅ Fixed: Use parameterized query instead of string literal
     );
     
     console.log(`✅ Set ${result.affectedRows} advocates online`);
@@ -308,15 +316,17 @@ app.post('/admin/advocates/set-online', async (req, res) => {
   }
 });
 
-// ✅ NEW: Set advocates offline for testing
+// ✅ FIXED: Set advocates offline for testing
 app.post('/admin/advocates/set-offline', async (req, res) => {
   try {
     const { pool } = require('./src/config/database');
     
     console.log('🔄 Setting advocates offline...');
     
+    // ✅ FIXED: Use parameterized query
     const [result] = await pool.execute(
-      'UPDATE advocates SET is_online = false WHERE status = "approved"'
+      'UPDATE advocates SET is_online = false WHERE status = ?',
+      ['approved']  // ✅ Fixed: Use parameterized query instead of string literal
     );
     
     console.log(`✅ Set ${result.affectedRows} advocates offline`);
