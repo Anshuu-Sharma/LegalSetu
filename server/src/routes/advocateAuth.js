@@ -4,6 +4,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/database');
 const { uploadS3 } = require('../config/multer-s3');
+const { s3 } = require('../config/s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { GetObjectCommand } = require('@aws-sdk/client-s3');
 const path = require('path');
 
 const router = express.Router();
@@ -83,6 +86,34 @@ const safeJsonParse = (jsonString, fallback = []) => {
   
   console.warn('⚠️ Unhandled data type, returning fallback:', typeof jsonString, jsonString);
   return fallback;
+};
+
+// ✅ NEW: Helper function to generate pre-signed URLs for S3 objects
+const generatePresignedUrl = async (s3Url) => {
+  if (!s3Url || !s3Url.includes('amazonaws.com')) {
+    return s3Url; // Return as-is if not an S3 URL
+  }
+  
+  try {
+    // Extract bucket and key from S3 URL
+    const url = new URL(s3Url);
+    const pathParts = url.pathname.substring(1).split('/');
+    const bucket = process.env.AWS_S3_BUCKET_NAME;
+    const key = pathParts.join('/');
+    
+    console.log('🔗 Generating pre-signed URL for:', { bucket, key });
+    
+    const presignedUrl = await getSignedUrl(s3, new GetObjectCommand({
+      Bucket: bucket,
+      Key: key
+    }), { expiresIn: 3600 }); // 1 hour expiry
+    
+    console.log('✅ Pre-signed URL generated successfully');
+    return presignedUrl;
+  } catch (error) {
+    console.error('❌ Error generating pre-signed URL:', error);
+    return s3Url; // Return original URL as fallback
+  }
 };
 
 // Advocate Registration with S3 Storage
@@ -245,7 +276,7 @@ router.post('/register', (req, res) => {
   });
 });
 
-// ✅ CRITICAL FIX: Advocate Login with comprehensive JSON parsing and error handling
+// ✅ CRITICAL FIX: Advocate Login with comprehensive JSON parsing and error handling + Pre-signed URLs
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -330,6 +361,11 @@ router.post('/login', async (req, res) => {
       parsedLanguages = [];
     }
 
+    // ✅ Generate pre-signed URL for profile photo
+    const profilePhotoUrl = advocate.profile_photo_url 
+      ? await generatePresignedUrl(advocate.profile_photo_url)
+      : null;
+
     const advocateResponse = {
       id: advocate.id,
       fullName: advocate.full_name,
@@ -341,7 +377,7 @@ router.post('/login', async (req, res) => {
       rating: advocate.rating || 0,
       totalConsultations: advocate.total_consultations || 0,
       isOnline: true,
-      profilePhotoUrl: advocate.profile_photo_url, // ✅ S3 URL already stored
+      profilePhotoUrl: profilePhotoUrl, // ✅ Pre-signed URL
       status: advocate.status
     };
 
@@ -391,6 +427,17 @@ router.get('/profile', async (req, res) => {
     }
 
     const advocate = advocates[0];
+
+    // ✅ Generate pre-signed URLs for profile photo and documents
+    const profilePhotoUrl = advocate.profile_photo_url 
+      ? await generatePresignedUrl(advocate.profile_photo_url)
+      : null;
+
+    const documentUrls = safeJsonParse(advocate.document_urls, []);
+    const presignedDocumentUrls = await Promise.all(
+      documentUrls.map(async (docUrl) => await generatePresignedUrl(docUrl))
+    );
+
     res.json({
       success: true,
       advocate: {
@@ -398,7 +445,8 @@ router.get('/profile', async (req, res) => {
         specializations: safeJsonParse(advocate.specializations, []),
         languages: safeJsonParse(advocate.languages, []),
         courtsPracticing: safeJsonParse(advocate.courts_practicing, []),
-        documentUrls: safeJsonParse(advocate.document_urls, [])
+        documentUrls: presignedDocumentUrls, // ✅ Pre-signed URLs
+        profilePhotoUrl: profilePhotoUrl // ✅ Pre-signed URL
       }
     });
   } catch (error) {
