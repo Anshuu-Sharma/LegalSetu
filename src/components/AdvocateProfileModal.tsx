@@ -74,6 +74,52 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
     return [];
   };
 
+  // ✅ NEW: Safe image component with error handling for S3 URLs
+  const SafeImage: React.FC<{
+    src?: string | null;
+    alt: string;
+    className?: string;
+    fallbackIcon?: React.ReactNode;
+  }> = ({ src, alt, className = "", fallbackIcon }) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageLoading, setImageLoading] = useState(true);
+
+    useEffect(() => {
+      setImageError(false);
+      setImageLoading(true);
+    }, [src]);
+
+    if (!src || imageError) {
+      return (
+        <div className={`${className} bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center`}>
+          {fallbackIcon || <User className="w-12 h-12 text-white/70" />}
+        </div>
+      );
+    }
+
+    return (
+      <div className={`${className} relative overflow-hidden`}>
+        {imageLoading && (
+          <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
+            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
+        <img
+          src={src}
+          alt={alt}
+          className={`w-full h-full object-cover ${imageLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+          onLoad={() => setImageLoading(false)}
+          onError={() => {
+            console.warn('❌ Profile image failed to load:', src);
+            setImageError(true);
+            setImageLoading(false);
+          }}
+          referrerPolicy="no-referrer"
+        />
+      </div>
+    );
+  };
+
   useEffect(() => {
     if (isOpen && advocate && activeTab === 'reviews') {
       fetchReviews();
@@ -104,11 +150,8 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
   };
 
   const handleDocumentView = (documentUrl: string) => {
-    // ✅ S3 URLs are already complete, no need to modify
-    const fullUrl = documentUrl.startsWith('http') 
-      ? documentUrl 
-      : `${import.meta.env.VITE_API_URL}${documentUrl}`;
-    window.open(fullUrl, '_blank');
+    // ✅ S3 URLs are already complete pre-signed URLs, open directly
+    window.open(documentUrl, '_blank');
   };
 
   const formatDate = (dateString?: string) => {
@@ -162,22 +205,12 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
             <div className="flex items-start space-x-6">
               {/* Profile Photo */}
               <div className="relative">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden bg-white/20 backdrop-blur-sm border-2 border-white/30">
-                  {advocate.profile_photo_url ? (
-                    <img
-                      src={advocate.profile_photo_url} // ✅ S3 URL is already complete
-                      alt={advocate.full_name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                        (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                  ) : null}
-                  <div className={`w-full h-full flex items-center justify-center ${advocate.profile_photo_url ? 'hidden' : ''}`}>
-                    <User className="w-12 h-12 text-white/70" />
-                  </div>
-                </div>
+                <SafeImage
+                  src={advocate.profile_photo_url}
+                  alt={advocate.full_name}
+                  className="w-24 h-24 rounded-2xl border-2 border-white/30"
+                  fallbackIcon={<User className="w-12 h-12 text-white/70" />}
+                />
                 {advocate.is_online && (
                   <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-2 border-white rounded-full"></div>
                 )}

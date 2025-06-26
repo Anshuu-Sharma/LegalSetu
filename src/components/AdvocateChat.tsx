@@ -85,6 +85,7 @@ const AdvocateChat: React.FC = () => {
     isOnline: false
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const specializations = [
     'Criminal Law', 'Civil Law', 'Corporate Law', 'Family Law',
@@ -110,6 +111,52 @@ const AdvocateChat: React.FC = () => {
       return defaultValue;
     }
     return Number(value);
+  };
+
+  // ✅ NEW: Safe image component with error handling
+  const SafeImage: React.FC<{
+    src?: string | null;
+    alt: string;
+    className?: string;
+    fallbackIcon?: React.ReactNode;
+  }> = ({ src, alt, className = "", fallbackIcon }) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageLoading, setImageLoading] = useState(true);
+
+    useEffect(() => {
+      setImageError(false);
+      setImageLoading(true);
+    }, [src]);
+
+    if (!src || imageError) {
+      return (
+        <div className={`${className} bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center`}>
+          {fallbackIcon || <User className="w-8 h-8 text-white" />}
+        </div>
+      );
+    }
+
+    return (
+      <div className={`${className} relative overflow-hidden`}>
+        {imageLoading && (
+          <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
+            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
+        <img
+          src={src}
+          alt={alt}
+          className={`w-full h-full object-cover ${imageLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+          onLoad={() => setImageLoading(false)}
+          onError={() => {
+            console.warn('❌ Image failed to load:', src);
+            setImageError(true);
+            setImageLoading(false);
+          }}
+          referrerPolicy="no-referrer"
+        />
+      </div>
+    );
   };
 
   // Get Firebase token for authentication
@@ -177,6 +224,10 @@ const AdvocateChat: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [activeConsultation]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const fetchAdvocates = async () => {
     if (!authReady || !currentUser) {
@@ -504,17 +555,12 @@ const AdvocateChat: React.FC = () => {
     >
       <div className="flex items-start space-x-4">
         <div className="relative">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center">
-            {advocate.profile_photo_url ? (
-              <img
-                src={advocate.profile_photo_url}
-                alt={advocate.full_name}
-                className="w-full h-full rounded-2xl object-cover"
-              />
-            ) : (
-              <User className="w-8 h-8 text-white" />
-            )}
-          </div>
+          <SafeImage
+            src={advocate.profile_photo_url}
+            alt={advocate.full_name}
+            className="w-16 h-16 rounded-2xl"
+            fallbackIcon={<User className="w-8 h-8 text-white" />}
+          />
           {advocate.is_online && (
             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
           )}
@@ -740,17 +786,12 @@ const AdvocateChat: React.FC = () => {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-            {activeConsultation?.profile_photo_url ? (
-              <img
-                src={activeConsultation.profile_photo_url}
-                alt={activeConsultation.advocate_name}
-                className="w-full h-full rounded-xl object-cover"
-              />
-            ) : (
-              <User className="w-6 h-6 text-white" />
-            )}
-          </div>
+          <SafeImage
+            src={activeConsultation?.profile_photo_url}
+            alt={activeConsultation?.advocate_name || 'Advocate'}
+            className="w-10 h-10 rounded-xl"
+            fallbackIcon={<User className="w-6 h-6 text-white" />}
+          />
           <div>
             <h3 className="font-semibold text-gray-800">{activeConsultation?.advocate_name}</h3>
             <p className="text-sm text-green-600">Online</p>
@@ -801,6 +842,7 @@ const AdvocateChat: React.FC = () => {
             </div>
           ))
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Message Input */}
