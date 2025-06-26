@@ -34,11 +34,16 @@ const ChatInterface = () => {
   const [typingId, setTypingId] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
 
+  const chatRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
   const { language, headerTitle, headerSubtitle, t } = useTranslation();
   const [suggestions, setSuggestions] = useState<string[]>(defaultSuggestions);
   const [inputPlaceholder, setInputPlaceholder] = useState('Ask something about Indian law...');
+
+  useEffect(() => {
+    chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight });
+  }, [messages]);
 
   useEffect(() => {
     let isMounted = true;
@@ -95,7 +100,7 @@ const ChatInterface = () => {
       });
 
       const data = await response.json();
-      const botReply = data.reply || 'Sorry, I couldn't find an answer.';
+      const botReply = data.reply || 'Sorry, I couldn’t find an answer.';
       setMessages((prev) => prev.filter((msg) => msg.id !== 'typing'));
       animateBotTyping(botReply);
     } catch (err) {
@@ -301,7 +306,7 @@ return (
         className="md:col-span-3 flex flex-col h-[500px] bg-white/70 backdrop-blur-xl border border-gray-300 rounded-3xl shadow-2xl overflow-hidden"
       >
         {/* Chat Body */}
-        <div className="flex-1 p-6 space-y-4 overflow-y-auto">
+        <div ref={chatRef} className="flex-1 p-6 space-y-4 overflow-y-auto">
           <AnimatePresence initial={false}>
             {/* Welcome Message */}
             <motion.div
