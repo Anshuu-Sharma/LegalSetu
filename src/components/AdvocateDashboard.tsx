@@ -60,10 +60,6 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
   const [loading, setLoading] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [error, setError] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
-  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
   // Helper function to safely format rating
   const formatRating = (rating: any): string => {
@@ -102,41 +98,6 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
       return () => clearInterval(interval);
     }
   }, [activeConsultation]);
-
-  // Smart auto-scroll: only scroll if user hasn't manually scrolled up
-  useEffect(() => {
-    if (shouldAutoScroll && !isUserScrolledUp) {
-      scrollToBottom();
-    }
-  }, [messages, shouldAutoScroll, isUserScrolledUp]);
-
-  // Check if user has scrolled up manually
-  const handleScroll = () => {
-    if (!messagesContainerRef.current) return;
-    
-    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
-    const isAtBottom = scrollHeight - scrollTop <= clientHeight + 50; // 50px threshold
-    
-    setIsUserScrolledUp(!isAtBottom);
-    
-    // If user scrolls to bottom manually, re-enable auto-scroll
-    if (isAtBottom) {
-      setShouldAutoScroll(true);
-    }
-  };
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  // Force scroll to bottom (for new messages sent by this user)
-  const forceScrollToBottom = () => {
-    setIsUserScrolledUp(false);
-    setShouldAutoScroll(true);
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
-  };
 
   const fetchConsultations = async () => {
     try {
@@ -203,9 +164,6 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
     const messageToSend = newMessage;
     setMessages(prev => [...prev, tempMessage]);
     setNewMessage('');
-    
-    // Force scroll to bottom when user sends a message
-    forceScrollToBottom();
 
     try {
       const token = getAdvocateToken();
@@ -387,9 +345,6 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
                 onClick={() => {
                   setActiveConsultation(consultation);
                   setView('chat');
-                  // Reset scroll state when entering a new chat
-                  setIsUserScrolledUp(false);
-                  setShouldAutoScroll(true);
                 }}
               >
                 <div className="flex items-center justify-between">
@@ -442,9 +397,6 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
               setActiveConsultation(null);
               setMessages([]);
               setError('');
-              // Reset scroll state when leaving chat
-              setIsUserScrolledUp(false);
-              setShouldAutoScroll(true);
             }}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
@@ -472,11 +424,7 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
       </div>
 
       {/* Messages */}
-      <div 
-        ref={messagesContainerRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 space-y-4"
-      >
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="text-center py-8">
             <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -507,21 +455,7 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
             </div>
           ))
         )}
-        <div ref={messagesEndRef} />
       </div>
-
-      {/* Scroll to bottom button (shown when user has scrolled up) */}
-      {isUserScrolledUp && (
-        <div className="flex justify-center py-2">
-          <button
-            onClick={forceScrollToBottom}
-            className="px-3 py-1 bg-blue-600 text-white text-xs rounded-full hover:bg-blue-700 transition-colors flex items-center space-x-1"
-          >
-            <span>New messages</span>
-            <ArrowLeft className="w-3 h-3 rotate-[-90deg]" />
-          </button>
-        </div>
-      )}
 
       {/* Message Input */}
       <div className="p-4 border-t border-gray-200">
