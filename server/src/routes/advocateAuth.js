@@ -1,3 +1,4 @@
+// server/src/routes/advocateAuth.js
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -36,6 +37,44 @@ const upload = multer({
     }
   }
 });
+
+// ✅ FIXED: Helper function to safely parse JSON with better error handling
+const safeJsonParse = (jsonString, fallback = []) => {
+  if (!jsonString || jsonString === null || jsonString === undefined || jsonString === '') {
+    return fallback;
+  }
+  
+  // If it's already an array, return it
+  if (Array.isArray(jsonString)) {
+    return jsonString;
+  }
+  
+  // If it's a string that looks like a comma-separated list, parse it
+  if (typeof jsonString === 'string') {
+    // Check if it's already JSON
+    if (jsonString.startsWith('[') && jsonString.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(jsonString);
+        return Array.isArray(parsed) ? parsed : fallback;
+      } catch (error) {
+        console.warn('⚠️ Failed to parse JSON array:', jsonString, 'Error:', error.message);
+        return fallback;
+      }
+    }
+    
+    // If it's a comma-separated string, split it
+    if (jsonString.includes(',')) {
+      return jsonString.split(',').map(item => item.trim()).filter(item => item.length > 0);
+    }
+    
+    // If it's a single item, return as array
+    if (jsonString.trim().length > 0) {
+      return [jsonString.trim()];
+    }
+  }
+  
+  return fallback;
+};
 
 // Advocate Registration
 router.post('/register', (req, res) => {
@@ -192,7 +231,7 @@ router.post('/register', (req, res) => {
   });
 });
 
-// Advocate Login
+// ✅ FIXED: Advocate Login with proper JSON parsing
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -204,6 +243,8 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    console.log('🔍 Advocate login attempt for:', email);
+
     // Find advocate
     const [advocates] = await pool.execute(
       'SELECT * FROM advocates WHERE email = ?',
@@ -211,6 +252,7 @@ router.post('/login', async (req, res) => {
     );
 
     if (advocates.length === 0) {
+      console.log('❌ Advocate not found:', email);
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials'
@@ -218,10 +260,12 @@ router.post('/login', async (req, res) => {
     }
 
     const advocate = advocates[0];
+    console.log('🔍 Found advocate:', advocate.full_name, 'Status:', advocate.status);
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, advocate.password);
     if (!isValidPassword) {
+      console.log('❌ Invalid password for:', email);
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials'
@@ -229,6 +273,7 @@ router.post('/login', async (req, res) => {
     }
 
     if (advocate.status !== 'approved') {
+      console.log('❌ Advocate not approved:', email, 'Status:', advocate.status);
       return res.status(403).json({
         success: false,
         error: `Your account status is: ${advocate.status}. Please wait for approval or contact support.`
@@ -247,26 +292,38 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    console.log('✅ Advocate login successful:', advocate.full_name);
+
+    // ✅ FIXED: Safely parse JSON fields with proper error handling
+    const advocateResponse = {
+      id: advocate.id,
+      fullName: advocate.full_name,
+      email: advocate.email,
+      phone: advocate.phone,
+      specializations: safeJsonParse(advocate.specializations, []),
+      languages: safeJsonParse(advocate.languages, []),
+      consultationFee: advocate.consultation_fee,
+      rating: advocate.rating,
+      totalConsultations: advocate.total_consultations,
+      isOnline: true,
+      profilePhotoUrl: advocate.profile_photo_url,
+      status: advocate.status
+    };
+
+    console.log('✅ Sending advocate response:', {
+      id: advocateResponse.id,
+      fullName: advocateResponse.fullName,
+      specializationsCount: advocateResponse.specializations.length,
+      languagesCount: advocateResponse.languages.length
+    });
+
     res.json({
       success: true,
       token,
-      advocate: {
-        id: advocate.id,
-        fullName: advocate.full_name,
-        email: advocate.email,
-        phone: advocate.phone,
-        specializations: JSON.parse(advocate.specializations || '[]'),
-        languages: JSON.parse(advocate.languages || '[]'),
-        consultationFee: advocate.consultation_fee,
-        rating: advocate.rating,
-        totalConsultations: advocate.total_consultations,
-        isOnline: true,
-        profilePhotoUrl: advocate.profile_photo_url,
-        status: advocate.status
-      }
+      advocate: advocateResponse
     });
   } catch (error) {
-    console.error('Advocate login error:', error);
+    console.error('❌ Advocate login error:', error);
     res.status(500).json({
       success: false,
       error: 'Login failed: ' + error.message
@@ -301,10 +358,10 @@ router.get('/profile', async (req, res) => {
       success: true,
       advocate: {
         ...advocate,
-        specializations: JSON.parse(advocate.specializations || '[]'),
-        languages: JSON.parse(advocate.languages || '[]'),
-        courtsPracticing: JSON.parse(advocate.courts_practicing || '[]'),
-        documentUrls: JSON.parse(advocate.document_urls || '[]')
+        specializations: safeJsonParse(advocate.specializations, []),
+        languages: safeJsonParse(advocate.languages, []),
+        courtsPracticing: safeJsonParse(advocate.courts_practicing, []),
+        documentUrls: safeJsonParse(advocate.document_urls, [])
       }
     });
   } catch (error) {
@@ -403,8 +460,8 @@ router.get('/all', async (req, res) => {
 
     const formattedAdvocates = advocates.map(advocate => ({
       ...advocate,
-      specializations: JSON.parse(advocate.specializations || '[]'),
-      languages: JSON.parse(advocate.languages || '[]')
+      specializations: safeJsonParse(advocate.specializations, []),
+      languages: safeJsonParse(advocate.languages, [])
     }));
 
     res.json({
