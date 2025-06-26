@@ -342,7 +342,13 @@ router.get('/advocates/:advocateId/reviews', authenticateUser, async (req, res) 
   try {
     const { advocateId } = req.params;
     const { page = 1, limit = 10 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    
+    // ✅ CRITICAL FIX: Ensure parameters are integers and handle them properly
+    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(String(limit), 10) || 10));
+    const offset = (pageNum - 1) * limitNum;
+
+    console.log('📊 Reviews query params:', { advocateId, pageNum, limitNum, offset });
 
     // ✅ FIXED: Use proper column aliasing to avoid ambiguity
     const [reviews] = await pool.execute(`
@@ -356,7 +362,7 @@ router.get('/advocates/:advocateId/reviews', authenticateUser, async (req, res) 
       WHERE ar.advocate_id = ?
       ORDER BY ar.created_at DESC
       LIMIT ? OFFSET ?
-    `, [advocateId, parseInt(limit), offset]);
+    `, [advocateId, limitNum, offset]);
 
     return res.json({
       success: true,
@@ -582,7 +588,7 @@ router.post('/messages', authenticateUser, async (req, res) => {
   }
 });
 
-// ✅ FIXED: Get messages for consultation with proper parameter handling
+// ✅ CRITICAL FIX: Get messages for consultation with proper parameter handling
 router.get('/consultations/:consultationId/messages', authenticateUser, async (req, res) => {
   try {
     const { consultationId } = req.params;
@@ -591,9 +597,15 @@ router.get('/consultations/:consultationId/messages', authenticateUser, async (r
 
     console.log('📨 Fetching messages for consultation:', { consultationId, userId, page, limit });
 
-    // ✅ FIXED: Ensure parameters are properly converted to integers (removed TypeScript syntax)
-    const pageNum = parseInt(page, 10) || 1;
-    const limitNum = parseInt(limit, 10) || 50;
+    // ✅ CRITICAL FIX: Ensure parameters are properly converted to integers and validated
+    let pageNum = parseInt(String(page), 10);
+    let limitNum = parseInt(String(limit), 10);
+    
+    // Validate and set safe defaults
+    if (isNaN(pageNum) || pageNum < 1) pageNum = 1;
+    if (isNaN(limitNum) || limitNum < 1) limitNum = 50;
+    if (limitNum > 100) limitNum = 100; // Cap at 100 for performance
+    
     const offset = (pageNum - 1) * limitNum;
 
     console.log('📊 Query parameters:', { pageNum, limitNum, offset });
@@ -614,13 +626,14 @@ router.get('/consultations/:consultationId/messages', authenticateUser, async (r
 
     console.log('✅ Consultation access verified');
 
-    // ✅ FIXED: Use proper integer parameters for LIMIT and OFFSET
+    // ✅ CRITICAL FIX: Use proper integer parameters for LIMIT and OFFSET
+    // Convert to string first to ensure MySQL gets the right type
     const [messages] = await pool.execute(`
       SELECT * FROM chat_messages 
       WHERE consultation_id = ?
       ORDER BY created_at DESC
-      LIMIT ? OFFSET ?
-    `, [consultationId, limitNum, offset]);
+      LIMIT ${limitNum} OFFSET ${offset}
+    `, [consultationId]);
 
     console.log(`✅ Retrieved ${messages.length} messages`);
 
