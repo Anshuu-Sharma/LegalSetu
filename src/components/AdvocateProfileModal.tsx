@@ -7,31 +7,33 @@ import {
 } from 'lucide-react';
 import LocalizedText from './LocalizedText';
 
+interface Advocate {
+  id: number;
+  full_name: string;
+  email?: string;
+  phone?: string;
+  bar_council_number?: string;
+  experience: number;
+  specializations: string[];
+  languages: string[];
+  education?: string;
+  courts_practicing?: string[];
+  consultation_fee: number;
+  bio?: string;
+  city: string;
+  state: string;
+  profile_photo_url?: string;
+  document_urls?: string[];
+  rating: number;
+  total_consultations: number;
+  total_reviews?: number;
+  is_online: boolean;
+  last_seen?: string;
+  created_at?: string;
+}
+
 interface AdvocateProfileModalProps {
-  advocate: {
-    id: number;
-    full_name: string;
-    email: string;
-    phone: string;
-    bar_council_number: string;
-    experience: number;
-    specializations: string[];
-    languages: string[];
-    education: string;
-    courts_practicing: string[];
-    consultation_fee: number;
-    bio: string;
-    city: string;
-    state: string;
-    profile_photo_url?: string;
-    document_urls: string[];
-    rating: number;
-    total_consultations: number;
-    total_reviews: number;
-    is_online: boolean;
-    last_seen?: string;
-    created_at: string;
-  } | null;
+  advocate: Advocate | null;
   isOpen: boolean;
   onClose: () => void;
   onStartConsultation: (advocateId: number) => void;
@@ -47,6 +49,31 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
   const [reviews, setReviews] = useState<any[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
 
+  // Helper functions for safe data handling
+  const safeNumber = (value: any, defaultValue: number = 0): number => {
+    if (value === null || value === undefined || isNaN(Number(value))) {
+      return defaultValue;
+    }
+    return Number(value);
+  };
+
+  const formatRating = (rating: any): string => {
+    return safeNumber(rating, 0).toFixed(1);
+  };
+
+  const safeArray = (value: any): string[] => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string' && value.trim()) {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [value];
+      } catch {
+        return value.split(',').map(item => item.trim()).filter(Boolean);
+      }
+    }
+    return [];
+  };
+
   useEffect(() => {
     if (isOpen && advocate && activeTab === 'reviews') {
       fetchReviews();
@@ -58,7 +85,13 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
     
     setLoadingReviews(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/advocate-chat/advocates/${advocate.id}/reviews`);
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/advocate-chat/advocates/${advocate.id}/reviews`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await response.json();
       if (data.success) {
         setReviews(data.reviews || []);
@@ -77,7 +110,8 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
     window.open(fullUrl, '_blank');
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -100,6 +134,11 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
   };
 
   if (!isOpen || !advocate) return null;
+
+  const specializations = safeArray(advocate.specializations);
+  const languages = safeArray(advocate.languages);
+  const courtsPracticing = safeArray(advocate.courts_practicing);
+  const documentUrls = safeArray(advocate.document_urls);
 
   return (
     <AnimatePresence>
@@ -151,12 +190,12 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
                 <div className="flex items-center space-x-4 mb-3">
                   <div className="flex items-center">
                     <Star className="w-4 h-4 text-yellow-400 fill-current mr-1" />
-                    <span className="font-medium">{advocate.rating.toFixed(1)}</span>
-                    <span className="text-blue-100 ml-1">({advocate.total_reviews} reviews)</span>
+                    <span className="font-medium">{formatRating(advocate.rating)}</span>
+                    <span className="text-blue-100 ml-1">({safeNumber(advocate.total_reviews)} reviews)</span>
                   </div>
                   <div className="flex items-center text-blue-100">
                     <Briefcase className="w-4 h-4 mr-1" />
-                    <span>{advocate.total_consultations} consultations</span>
+                    <span>{safeNumber(advocate.total_consultations)} consultations</span>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4 text-blue-100">
@@ -166,14 +205,14 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
                   </div>
                   <div className="flex items-center">
                     <Clock className="w-4 h-4 mr-1" />
-                    <span>{advocate.experience} years experience</span>
+                    <span>{safeNumber(advocate.experience)} years experience</span>
                   </div>
                 </div>
               </div>
 
               {/* Consultation Fee */}
               <div className="text-right">
-                <div className="text-2xl font-bold text-white">₹{advocate.consultation_fee}</div>
+                <div className="text-2xl font-bold text-white">₹{safeNumber(advocate.consultation_fee)}</div>
                 <div className="text-blue-100 text-sm">per consultation</div>
                 <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-2 ${
                   advocate.is_online 
@@ -235,18 +274,24 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
                       <LocalizedText text="Contact Information" />
                     </h3>
                     <div className="space-y-3">
-                      <div className="flex items-center">
-                        <Mail className="w-4 h-4 text-gray-400 mr-3" />
-                        <span className="text-gray-600">{advocate.email}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Phone className="w-4 h-4 text-gray-400 mr-3" />
-                        <span className="text-gray-600">{advocate.phone}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Scale className="w-4 h-4 text-gray-400 mr-3" />
-                        <span className="text-gray-600">Bar Council: {advocate.bar_council_number}</span>
-                      </div>
+                      {advocate.email && (
+                        <div className="flex items-center">
+                          <Mail className="w-4 h-4 text-gray-400 mr-3" />
+                          <span className="text-gray-600">{advocate.email}</span>
+                        </div>
+                      )}
+                      {advocate.phone && (
+                        <div className="flex items-center">
+                          <Phone className="w-4 h-4 text-gray-400 mr-3" />
+                          <span className="text-gray-600">{advocate.phone}</span>
+                        </div>
+                      )}
+                      {advocate.bar_council_number && (
+                        <div className="flex items-center">
+                          <Scale className="w-4 h-4 text-gray-400 mr-3" />
+                          <span className="text-gray-600">Bar Council: {advocate.bar_council_number}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -259,12 +304,14 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
                     <div className="space-y-3">
                       <div className="flex items-center">
                         <Calendar className="w-4 h-4 text-gray-400 mr-3" />
-                        <span className="text-gray-600">{advocate.experience} years of experience</span>
+                        <span className="text-gray-600">{safeNumber(advocate.experience)} years of experience</span>
                       </div>
-                      <div className="flex items-center">
-                        <GraduationCap className="w-4 h-4 text-gray-400 mr-3" />
-                        <span className="text-gray-600">Joined {formatDate(advocate.created_at)}</span>
-                      </div>
+                      {advocate.created_at && (
+                        <div className="flex items-center">
+                          <GraduationCap className="w-4 h-4 text-gray-400 mr-3" />
+                          <span className="text-gray-600">Joined {formatDate(advocate.created_at)}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -281,50 +328,54 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
                 )}
 
                 {/* Specializations */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-                    <Briefcase className="w-5 h-5 mr-2 text-blue-600" />
-                    <LocalizedText text="Specializations" />
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {advocate.specializations.map((spec, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
-                      >
-                        {spec}
-                      </span>
-                    ))}
+                {specializations.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                      <Briefcase className="w-5 h-5 mr-2 text-blue-600" />
+                      <LocalizedText text="Specializations" />
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {specializations.map((spec, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
+                        >
+                          {spec}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Languages */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-                    <Languages className="w-5 h-5 mr-2 text-blue-600" />
-                    <LocalizedText text="Languages" />
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {advocate.languages.map((lang, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium"
-                      >
-                        {lang}
-                      </span>
-                    ))}
+                {languages.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                      <Languages className="w-5 h-5 mr-2 text-blue-600" />
+                      <LocalizedText text="Languages" />
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {languages.map((lang, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium"
+                        >
+                          {lang}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Courts Practicing */}
-                {advocate.courts_practicing && advocate.courts_practicing.length > 0 && (
+                {courtsPracticing.length > 0 && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
                       <Scale className="w-5 h-5 mr-2 text-blue-600" />
                       <LocalizedText text="Courts Practicing" />
                     </h3>
                     <div className="flex flex-wrap gap-2">
-                      {advocate.courts_practicing.map((court, index) => (
+                      {courtsPracticing.map((court, index) => (
                         <span
                           key={index}
                           className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium"
@@ -345,9 +396,9 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
                   <LocalizedText text="Uploaded Documents" />
                 </h3>
                 
-                {advocate.document_urls && advocate.document_urls.length > 0 ? (
+                {documentUrls.length > 0 ? (
                   <div className="grid md:grid-cols-2 gap-4">
-                    {advocate.document_urls.map((docUrl, index) => (
+                    {documentUrls.map((docUrl, index) => (
                       <div
                         key={index}
                         className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow"
@@ -428,7 +479,7 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
                               <Star
                                 key={i}
                                 className={`w-4 h-4 ${
-                                  i < review.rating
+                                  i < safeNumber(review.rating)
                                     ? 'text-yellow-400 fill-current'
                                     : 'text-gray-300'
                                 }`}
@@ -440,7 +491,7 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
                           <p className="text-gray-600 text-sm">{review.review_text}</p>
                         )}
                         <p className="text-xs text-gray-400 mt-2">
-                          {formatDate(review.created_at)}
+                          {formatDate(review.created_at || review.review_date)}
                         </p>
                       </div>
                     ))}
@@ -489,7 +540,7 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
                   className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                 >
                   <span><LocalizedText text="Start Consultation" /></span>
-                  <span className="text-lg">₹{advocate.consultation_fee}</span>
+                  <span className="text-lg">₹{safeNumber(advocate.consultation_fee)}</span>
                 </motion.button>
               </div>
             </div>
