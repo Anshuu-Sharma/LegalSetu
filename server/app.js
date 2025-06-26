@@ -93,7 +93,7 @@ app.get('/debug/advocates', async (req, res) => {
   }
 });
 
-// ✅ Admin route to approve advocates (improved)
+// ✅ IMPROVED Admin route to approve advocates
 app.patch('/admin/advocates/:advocateId/status', async (req, res) => {
   try {
     const { advocateId } = req.params;
@@ -193,7 +193,7 @@ app.get('/admin/advocates', async (req, res) => {
   }
 });
 
-// ✅ Bulk approve all pending advocates (for testing)
+// ✅ ENHANCED Bulk approve all pending advocates
 app.post('/admin/advocates/approve-all', async (req, res) => {
   try {
     const { pool } = require('./src/config/database');
@@ -211,6 +211,11 @@ app.post('/admin/advocates/approve-all', async (req, res) => {
       });
     }
 
+    console.log(`🔄 Found ${pending.length} pending advocates to approve:`);
+    pending.forEach(advocate => {
+      console.log(`   - ${advocate.full_name} (${advocate.email}) - ID: ${advocate.id}`);
+    });
+
     // Approve all pending advocates
     const [result] = await pool.execute(
       'UPDATE advocates SET status = "approved", updated_at = CURRENT_TIMESTAMP WHERE status = "pending"'
@@ -225,6 +230,64 @@ app.post('/admin/advocates/approve-all', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Bulk approve error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ✅ NEW: Quick approve single advocate by ID
+app.post('/admin/advocates/:advocateId/approve', async (req, res) => {
+  try {
+    const { advocateId } = req.params;
+    const { pool } = require('./src/config/database');
+
+    console.log(`🚀 Quick approving advocate ID: ${advocateId}`);
+
+    // Get advocate info first
+    const [advocate] = await pool.execute(
+      'SELECT id, full_name, email, status FROM advocates WHERE id = ?',
+      [advocateId]
+    );
+
+    if (advocate.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `Advocate with ID ${advocateId} not found`
+      });
+    }
+
+    const advocateInfo = advocate[0];
+    console.log(`📋 Approving: ${advocateInfo.full_name} (${advocateInfo.email}) - Current status: ${advocateInfo.status}`);
+
+    // Update to approved
+    const [result] = await pool.execute(
+      'UPDATE advocates SET status = "approved", updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [advocateId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to approve advocate'
+      });
+    }
+
+    console.log(`✅ Successfully approved advocate: ${advocateInfo.full_name}`);
+
+    res.json({
+      success: true,
+      message: `Advocate ${advocateInfo.full_name} approved successfully`,
+      advocate: {
+        id: advocateInfo.id,
+        name: advocateInfo.full_name,
+        email: advocateInfo.email,
+        status: 'approved'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Quick approve error:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -311,6 +374,8 @@ Promise.all([
     console.log(`⚖️  Advocate API: Available at /api/advocate-auth & /api/advocate-chat`);
     console.log(`🔍 Debug: Available at /debug/advocates`);
     console.log(`👨‍💼 Admin: Available at /admin/advocates`);
+    console.log(`🚀 Quick Approve: POST /admin/advocates/{id}/approve`);
+    console.log(`📦 Bulk Approve: POST /admin/advocates/approve-all`);
   });
 }).catch((error) => {
   console.error('❌ Failed to start server:', error);
