@@ -591,9 +591,9 @@ router.get('/consultations/:consultationId/messages', authenticateUser, async (r
 
     console.log('📨 Fetching messages for consultation:', { consultationId, userId, page, limit });
 
-    // ✅ FIXED: Ensure parameters are properly converted to integers
-    const pageNum = parseInt(page as string, 10) || 1;
-    const limitNum = parseInt(limit as string, 10) || 50;
+    // ✅ FIXED: Ensure parameters are properly converted to integers (removed TypeScript syntax)
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 50;
     const offset = (pageNum - 1) * limitNum;
 
     console.log('📊 Query parameters:', { pageNum, limitNum, offset });
