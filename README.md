@@ -24,13 +24,9 @@ This is not just a tool — it’s a **mission to make legal help accessible, un
 > Your personal lawyer in your pocket — available in your own language.
 
 **How it works**:
-- Open the chat interface
-- 🗣️ Ask any legal doubt via **text or voice**, in your **regional language**
+- Open the chat interface  
+- 🗣️ Ask any legal doubt via **text or voice**, in your **regional language**  
 - 🤖 AI instantly replies with simple, localized explanations
-
-**Example Use Case**:  
-"मुझे बिना नोटिस के निकाला गया, क्या ये लीगल है?"  
-→ Instant reply in Hindi with section references from Indian law.
 
 ---
 
@@ -39,13 +35,9 @@ This is not just a tool — it’s a **mission to make legal help accessible, un
 > Understand any legal document — even if it’s complex or not in your language.
 
 **How it works**:
-1. 📤 Upload a document (PDF, image, etc.)
-2. 🧠 LegalSetu analyzes clauses, detects risks, and summarizes key info
-3. 💬 Chat with the document — ask "What does Clause 5 mean?" in **your language**
-4. 🔍 Get answers, interpretations, and even cross-check legality
-
-**Example Use Case**:  
-Upload a rental agreement → Ask in Tamil → Get reply in Tamil: "This clause violates standard tenant rights."
+- 📤 Upload a document (PDF, image, etc.)  
+- 💬 Chat with it clause by clause  
+- 🔍 Get multilingual explanations and legal context
 
 ---
 
@@ -54,13 +46,9 @@ Upload a rental agreement → Ask in Tamil → Get reply in Tamil: "This clause 
 > Explore the Indian Constitution like never before — smart, searchable, and regionalized.
 
 **How it works**:
-- Type or speak any keyword or doubt (e.g., "right to education")  
-- LegalSetu finds the **most relevant Article(s)**  
-- Get **summarized explanations** in your language
-
-**Example Use Case**:  
-Ask in Marathi: "महिलांसाठी कोणते अधिकार आहेत?"  
-→ Get Article 15, 39A, etc., explained in Marathi with context.
+- 🔎 Search by keyword  
+- 📘 Get relevant Articles  
+- 📖 Understand them in your own language  
 
 ---
 
@@ -69,15 +57,27 @@ Ask in Marathi: "महिलांसाठी कोणते अधिका�
 > Filling complex government forms? Let AI handle it — with your guidance, in your language.
 
 **How it works**:
-1. 📤 Upload a scanned/digital form (like income, caste, PAN, etc.)
-2. 🧠 AI extracts the fields that need to be filled
-3. 💬 It asks you questions — one by one — **in your language**
-4. You respond via **text or speech**
-5. 📝 AI fills the form, lets you preview, and finally —  
-6. 📥 **Download your fully filled form**
+- 📤 Upload form  
+- 🤖 AI asks simple multilingual questions  
+- 📝 You answer via text or voice  
+- 📥 Get a fully filled PDF  
 
-**Example Use Case**:  
-Upload Income Certificate form → Answer prompts in Bengali → Form auto-filled → Download PDF.
+---
+
+### 📍 Advocate – Find Nearby Lawyers *(New)*
+
+> Looking for real legal assistance near you? Let LegalSetu connect you.
+
+**How it works**:
+- 📌 Uses your location to show verified advocates within a 5km radius  
+- 📇 Displays details like name, experience, rating, contact number, and distance  
+- 📈 Sort by relevance, distance, rating, or experience  
+- 🗺️ Direct link to Maps for real-time navigation  
+- ☎️ One-tap call to connect
+
+**Built with**: Google Maps API + custom filtering logic + Firebase
+
+**Use Case**: A villager needs legal aid on property. They search, see 3 lawyers nearby, sort by experience, and call one instantly — no middleman.
 
 ---
 
@@ -122,6 +122,7 @@ _(More coming soon)_
 | ☁️ Storage   | AWS S3 + MySQL Database |
 | 🧠 AI Models | Gemini + Google Translate (India-tuned) |
 | 🗣️ Voice     | Google Cloud Text to Speech  (Text ↔ Speech, multilingual) |
+| 🌐 Maps      | Google Maps API |
 | 📦 OCR       | AI-based image & PDF parsing |
 
 ---
@@ -135,6 +136,7 @@ _(More coming soon)_
 | 👩‍🎓 *Student*       | Ask in Marathi: "What are my fundamental rights?" → Constitution Explorer finds it |
 | 🧓 *Senior Citizen* | Use voice to fill pension form in Kannada → download prefilled form |
 | 👩‍🦰 *Working Woman* | Get legal protection info against workplace harassment in regional language |
+| 👨‍⚖️ *Law Seeker*     | Use the “Advocate” feature to locate nearby legal help instantly |
 
 ---
 
@@ -148,4 +150,5 @@ _(More coming soon)_
 
 ---
 
-> ⚖️ **LegalSetu is not just software — it’s a legal revolution for Bharat.** Now, legal help doesn’t need to be confusing, English-only, or lawyer-dependent. It’s just a few taps and one voice away — in your language.
+> ⚖️ **LegalSetu is not just software — it’s a legal revolution for Bharat.**  
+> Now, legal help doesn’t need to be confusing, English-only, or lawyer-dependent. It’s just a few taps and one voice away — in your language.
