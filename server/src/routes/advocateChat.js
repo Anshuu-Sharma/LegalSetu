@@ -139,6 +139,21 @@ const authenticateUser = async (req, res, next) => {
   }
 };
 
+// Helper function to safely parse JSON
+const safeJsonParse = (jsonString, fallback = []) => {
+  if (!jsonString || jsonString === null || jsonString === undefined) {
+    return fallback;
+  }
+  
+  try {
+    const parsed = JSON.parse(jsonString);
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch (error) {
+    console.warn('⚠️ Failed to parse JSON:', jsonString, 'Error:', error.message);
+    return fallback;
+  }
+};
+
 // Get available advocates
 router.get('/advocates', authenticateUser, async (req, res) => {
   try {
@@ -191,11 +206,23 @@ router.get('/advocates', authenticateUser, async (req, res) => {
 
     console.log(`✅ Found ${advocates.length} advocates`);
 
-    const formattedAdvocates = advocates.map(advocate => ({
-      ...advocate,
-      specializations: JSON.parse(advocate.specializations || '[]'),
-      languages: JSON.parse(advocate.languages || '[]')
-    }));
+    // Safely parse JSON fields for each advocate
+    const formattedAdvocates = advocates.map(advocate => {
+      try {
+        return {
+          ...advocate,
+          specializations: safeJsonParse(advocate.specializations, []),
+          languages: safeJsonParse(advocate.languages, [])
+        };
+      } catch (error) {
+        console.error('❌ Error formatting advocate:', advocate.id, error);
+        return {
+          ...advocate,
+          specializations: [],
+          languages: []
+        };
+      }
+    });
 
     return res.json({
       success: true,
@@ -245,9 +272,9 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
       success: true,
       advocate: {
         ...advocate,
-        specializations: JSON.parse(advocate.specializations || '[]'),
-        languages: JSON.parse(advocate.languages || '[]'),
-        courtsPracticing: JSON.parse(advocate.courts_practicing || '[]'),
+        specializations: safeJsonParse(advocate.specializations, []),
+        languages: safeJsonParse(advocate.languages, []),
+        courtsPracticing: safeJsonParse(advocate.courts_practicing, []),
         reviews
       }
     });
