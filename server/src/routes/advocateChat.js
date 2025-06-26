@@ -191,10 +191,10 @@ router.get('/advocates', authenticateUser, async (req, res) => {
         consultation_fee, rating, total_consultations, is_online,
         profile_photo_url, bio, city, state, last_seen
       FROM advocates 
-      WHERE status = 'approved'
+      WHERE status = ?
     `;
     
-    const params = [];
+    const params = ['approved']; // ✅ FIXED: Use parameterized query instead of string literal
 
     if (specialization) {
       query += ` AND JSON_CONTAINS(specializations, ?)`;
@@ -289,8 +289,8 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
         is_online, profile_photo_url, document_urls, bio, city, state, 
         last_seen, created_at
       FROM advocates 
-      WHERE id = ? AND status = 'approved'
-    `, [advocateId]);
+      WHERE id = ? AND status = ?
+    `, [advocateId, 'approved']); // ✅ FIXED: Use parameterized query
 
     if (advocates.length === 0) {
       return res.status(404).json({ success: false, error: 'Advocate not found' });
@@ -396,10 +396,10 @@ router.post('/consultations/start', authenticateUser, async (req, res) => {
       });
     }
 
-    // Check if advocate is available
+    // ✅ FIXED: Check if advocate is available using parameterized query
     const [advocates] = await pool.execute(
-      'SELECT * FROM advocates WHERE id = ? AND status = "approved"',
-      [advocateId]
+      'SELECT * FROM advocates WHERE id = ? AND status = ?',
+      [advocateId, 'approved'] // ✅ FIXED: Use parameterized query instead of string literal
     );
 
     if (advocates.length === 0) {
