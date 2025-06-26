@@ -51,6 +51,7 @@ const uploadS3 = multer({
     s3: s3,
     bucket: process.env.AWS_S3_BUCKET_NAME,
     acl: 'private', // Files are private by default
+    contentType: multerS3.AUTO_CONTENT_TYPE,
     metadata: function (req, file, cb) {
       cb(null, {
         fieldName: file.fieldname,
@@ -91,6 +92,7 @@ const uploadS3Documents = multer({
     s3: s3,
     bucket: process.env.AWS_S3_BUCKET_NAME,
     acl: 'private', // Files are private by default
+    contentType: multerS3.AUTO_CONTENT_TYPE,
     metadata: function (req, file, cb) {
       cb(null, {
         fieldName: file.fieldname,

@@ -5,7 +5,7 @@ const fontkit = require('fontkit');
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const { s3 } = require('../config/s3'); 
 const { v4: uuidv4 } = require('uuid');
-
+const { Upload } = require('@aws-sdk/lib-storage');
 
 //More languages:
 const FONT_MAP = [
@@ -21,6 +21,7 @@ const FONT_MAP = [
   { name: 'NotoNastaliqUrdu', path: 'NotoNastaliqUrdu-Regular.ttf', test: /[\u0600-\u06FF]/ }, // Urdu (the font displayed is not that good for urdu)
   { name: 'NotoSans', path: 'NotoSans-Regular.ttf', test: /[\u0000-\u007F]/ }, // Default Latin
 ];
+
 async function loadFonts(pdfDoc) {
   const loadedFonts = {};
   for (const fontSpec of FONT_MAP) {
@@ -49,7 +50,6 @@ function pickFontForText(loadedFonts, text) {
 // return loadedFonts['Default'];
 return null;
 }
-
 
 class FormFillingService {
   async fillForm(filePath, formData, formFields = [], imageHeight = null) {
@@ -153,42 +153,47 @@ class FormFillingService {
 
       const pdfBytes = await pdfDoc.save();
 
-      // local save:
-      // const outputPath = path.join('uploads', 'filled', `filled_${Date.now()}.pdf`);
-      // await fsp.mkdir(path.dirname(outputPath), { recursive: true });
-      // await fsp.writeFile(outputPath, pdfBytes);
-
-      // return {
-      //   filePath: outputPath,
-      //   downloadUrl: `/api/forms/download/${path.basename(outputPath)}`
-
-      // AWS save:
+      // AWS S3 save using AWS SDK v3:
       const fileName = `filled_${uuidv4()}.pdf`;
       const s3Key = `filled-forms/${fileName}`;
 
-      const uploadParams = {
-        Bucket: process.env.AWS_S3_BUCKET_NAME,
-        Key: s3Key,
-        Body: pdfBytes,
-        ContentType: 'application/pdf',
-        ACL: 'private' // Keep files private
-      };
+      console.log('📤 Uploading filled form to S3...');
 
-      const uploadResult = await s3.upload(uploadParams).promise();
+      try {
+        const upload = new Upload({
+          client: s3,
+          params: {
+            Bucket: process.env.AWS_S3_BUCKET_NAME,
+            Key: s3Key,
+            Body: pdfBytes,
+            ContentType: 'application/pdf',
+            ACL: 'private'
+          }
+        });
 
-      // Generate a pre-signed URL for download (expires in 1 hour)
-      const downloadUrl = s3.getSignedUrl('getObject', {
-        Bucket: process.env.AWS_S3_BUCKET_NAME,
-        Key: s3Key,
-        Expires: 3600 // 1 hour
-      });
+        const uploadResult = await upload.done();
+        console.log('✅ S3 upload successful:', uploadResult.Location);
 
-      return {
-        filePath: uploadResult.Location,
-        downloadUrl: downloadUrl,
-        s3Key: s3Key,
-        fileName: fileName
-      };
+        // Generate a pre-signed URL for download using AWS SDK v3
+        const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+        const { GetObjectCommand } = require('@aws-sdk/client-s3');
+
+        const downloadUrl = await getSignedUrl(s3, new GetObjectCommand({
+          Bucket: process.env.AWS_S3_BUCKET_NAME,
+          Key: s3Key,
+          ResponseContentDisposition: `attachment; filename="${fileName}"`
+        }), { expiresIn: 3600 }); // 1 hour
+
+        return {
+          filePath: uploadResult.Location,
+          downloadUrl: downloadUrl,
+          s3Key: s3Key,
+          fileName: fileName
+        };
+      } catch (s3Error) {
+        console.error('❌ S3 upload failed:', s3Error);
+        throw new Error('Failed to upload filled form to S3: ' + s3Error.message);
+      }
     } catch (error) {
       console.error('Form filling error:', error);
       throw new Error('Failed to fill form: ' + error.message);
