@@ -267,6 +267,73 @@ app.post('/admin/advocates/:advocateId/approve', async (req, res) => {
   }
 });
 
+// ✅ NEW: Set advocates online for testing
+app.post('/admin/advocates/set-online', async (req, res) => {
+  try {
+    const { pool } = require('./src/config/database');
+    
+    console.log('🔄 Setting advocates online for testing...');
+    
+    // Get all approved advocates
+    const [advocates] = await pool.execute(
+      'SELECT id, full_name, email FROM advocates WHERE status = "approved"'
+    );
+    
+    if (advocates.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No approved advocates found to set online',
+        onlineAdvocates: []
+      });
+    }
+    
+    // Set all approved advocates online
+    const [result] = await pool.execute(
+      'UPDATE advocates SET is_online = true, last_seen = CURRENT_TIMESTAMP WHERE status = "approved"'
+    );
+    
+    console.log(`✅ Set ${result.affectedRows} advocates online`);
+    
+    res.json({
+      success: true,
+      message: `Successfully set ${result.affectedRows} advocates online`,
+      onlineAdvocates: advocates.map(a => ({ id: a.id, name: a.full_name, email: a.email }))
+    });
+  } catch (error) {
+    console.error('❌ Set online error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ✅ NEW: Set advocates offline for testing
+app.post('/admin/advocates/set-offline', async (req, res) => {
+  try {
+    const { pool } = require('./src/config/database');
+    
+    console.log('🔄 Setting advocates offline...');
+    
+    const [result] = await pool.execute(
+      'UPDATE advocates SET is_online = false WHERE status = "approved"'
+    );
+    
+    console.log(`✅ Set ${result.affectedRows} advocates offline`);
+    
+    res.json({
+      success: true,
+      message: `Successfully set ${result.affectedRows} advocates offline`
+    });
+  } catch (error) {
+    console.error('❌ Set offline error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // ✅ Admin route to get all advocates with detailed info
 app.get('/admin/advocates', async (req, res) => {
   try {
@@ -382,6 +449,8 @@ Promise.all([
     console.log(`👨‍💼 Admin: Available at /admin/advocates`);
     console.log(`🚀 Quick Approve: POST /admin/advocates/{id}/approve`);
     console.log(`📦 Bulk Approve: POST /admin/advocates/approve-all`);
+    console.log(`🟢 Set Online: POST /admin/advocates/set-online`);
+    console.log(`🔴 Set Offline: POST /admin/advocates/set-offline`);
   });
 }).catch((error) => {
   console.error('❌ Failed to start server:', error);
