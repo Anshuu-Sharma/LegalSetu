@@ -62,6 +62,22 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
   const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Helper function to safely format rating
+  const formatRating = (rating: any): string => {
+    if (rating === null || rating === undefined || isNaN(Number(rating))) {
+      return '0.0';
+    }
+    return Number(rating).toFixed(1);
+  };
+
+  // Helper function to safely get number value
+  const safeNumber = (value: any, defaultValue: number = 0): number => {
+    if (value === null || value === undefined || isNaN(Number(value))) {
+      return defaultValue;
+    }
+    return Number(value);
+  };
+
   // Get advocate token
   const getAdvocateToken = () => {
     return localStorage.getItem('advocateToken');
@@ -264,7 +280,7 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
               <p className="text-sm font-medium text-gray-600">
                 <LocalizedText text="Total Consultations" />
               </p>
-              <p className="text-2xl font-bold text-gray-900">{advocateData.totalConsultations}</p>
+              <p className="text-2xl font-bold text-gray-900">{safeNumber(advocateData.totalConsultations)}</p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <Users className="w-6 h-6 text-blue-600" />
@@ -278,7 +294,7 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
               <p className="text-sm font-medium text-gray-600">
                 <LocalizedText text="Rating" />
               </p>
-              <p className="text-2xl font-bold text-gray-900">{advocateData.rating.toFixed(1)}</p>
+              <p className="text-2xl font-bold text-gray-900">{formatRating(advocateData.rating)}</p>
             </div>
             <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
               <Star className="w-6 h-6 text-yellow-600" />
@@ -306,7 +322,7 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
               <p className="text-sm font-medium text-gray-600">
                 <LocalizedText text="Fee per Session" />
               </p>
-              <p className="text-2xl font-bold text-gray-900">₹{advocateData.consultationFee}</p>
+              <p className="text-2xl font-bold text-gray-900">₹{safeNumber(advocateData.consultationFee)}</p>
             </div>
             <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-purple-600" />
@@ -367,7 +383,7 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
                       {formatDate(consultation.started_at)}
                     </p>
                     <p className="text-sm font-medium text-green-600">
-                      ₹{consultation.fee_amount}
+                      ₹{safeNumber(consultation.fee_amount)}
                     </p>
                   </div>
                 </div>
