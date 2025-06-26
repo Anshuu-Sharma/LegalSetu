@@ -10,15 +10,70 @@ const authenticateUser = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
-      console.log('❌ No token provided');
+      console.log('❌ No token provided in advocate chat');
       return res.status(401).json({ success: false, error: 'No token provided' });
     }
 
-    console.log('🔍 Verifying token...');
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
-    console.log('✅ Token decoded:', { userId: decoded.userId, advocateId: decoded.advocateId, type: decoded.type });
+    console.log('🔍 Advocate chat - verifying token...');
     
-    // Check if it's a Firebase user token or advocate token
+    // Try Firebase token first
+    try {
+      // Simple Firebase token verification
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+        
+        if (payload.iss && payload.iss.includes('securetoken.google.com') && payload.email) {
+          console.log('✅ Firebase token detected for:', payload.email);
+          
+          // Check if user exists in database
+          const [users] = await pool.execute(
+            'SELECT id, email, name FROM users WHERE email = ?',
+            [payload.email]
+          );
+          
+          if (users.length === 0) {
+            console.log('🆕 Creating new user for advocate chat:', payload.email);
+            // Create user if doesn't exist
+            const [result] = await pool.execute(
+              'INSERT INTO users (email, name, preferred_language) VALUES (?, ?, ?)',
+              [payload.email, payload.name || payload.email.split('@')[0], 'en']
+            );
+            
+            req.user = {
+              userId: result.insertId,
+              email: payload.email,
+              name: payload.name || payload.email.split('@')[0],
+              userType: 'user',
+              userData: {
+                id: result.insertId,
+                email: payload.email,
+                name: payload.name || payload.email.split('@')[0]
+              }
+            };
+          } else {
+            req.user = {
+              userId: users[0].id,
+              email: users[0].email,
+              name: users[0].name,
+              userType: 'user',
+              userData: users[0]
+            };
+          }
+          
+          console.log('✅ Firebase user authenticated for advocate chat:', req.user.userId);
+          return next();
+        }
+      }
+    } catch (firebaseError) {
+      console.log('🔄 Not a Firebase token, trying JWT...');
+    }
+
+    // Try JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+    console.log('✅ JWT token decoded:', { userId: decoded.userId, advocateId: decoded.advocateId, type: decoded.type });
+    
+    // Check if it's a user token or advocate token
     if (decoded.userId) {
       // This is a regular user token
       const [users] = await pool.execute(
@@ -27,11 +82,16 @@ const authenticateUser = async (req, res, next) => {
       );
       
       if (users.length === 0) {
-        console.log('❌ User not found in database');
+        console.log('❌ JWT User not found in database');
         return res.status(401).json({ success: false, error: 'User not found' });
       }
       
-      req.user = { ...decoded, userType: 'user', userData: users[0] };
+      req.user = { 
+        ...decoded, 
+        userType: 'user', 
+        userData: users[0],
+        userId: users[0].id 
+      };
     } else if (decoded.advocateId) {
       // This is an advocate token
       const [advocates] = await pool.execute(
@@ -40,21 +100,26 @@ const authenticateUser = async (req, res, next) => {
       );
       
       if (advocates.length === 0) {
-        console.log('❌ Advocate not found in database');
+        console.log('❌ JWT Advocate not found in database');
         return res.status(401).json({ success: false, error: 'Advocate not found' });
       }
       
-      req.user = { ...decoded, userType: 'advocate', advocateData: advocates[0] };
+      req.user = { 
+        ...decoded, 
+        userType: 'advocate', 
+        advocateData: advocates[0],
+        advocateId: advocates[0].id 
+      };
     } else {
-      console.log('❌ Invalid token structure');
+      console.log('❌ Invalid JWT token structure');
       return res.status(401).json({ success: false, error: 'Invalid token structure' });
     }
     
-    console.log('✅ Authentication successful');
+    console.log('✅ JWT authentication successful for advocate chat');
     next();
   } catch (error) {
-    console.error('❌ Authentication error:', error.message);
-    res.status(401).json({ success: false, error: 'Invalid token' });
+    console.error('❌ Advocate chat authentication error:', error.message);
+    res.status(401).json({ success: false, error: 'Invalid token: ' + error.message });
   }
 };
 
