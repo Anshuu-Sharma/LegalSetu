@@ -1,0 +1,503 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  X, Star, MapPin, Clock, GraduationCap, Scale, 
+  Phone, Mail, FileText, Download, Eye, Calendar,
+  Award, Languages, Briefcase, User, Shield
+} from 'lucide-react';
+import LocalizedText from './LocalizedText';
+
+interface AdvocateProfileModalProps {
+  advocate: {
+    id: number;
+    full_name: string;
+    email: string;
+    phone: string;
+    bar_council_number: string;
+    experience: number;
+    specializations: string[];
+    languages: string[];
+    education: string;
+    courts_practicing: string[];
+    consultation_fee: number;
+    bio: string;
+    city: string;
+    state: string;
+    profile_photo_url?: string;
+    document_urls: string[];
+    rating: number;
+    total_consultations: number;
+    total_reviews: number;
+    is_online: boolean;
+    last_seen?: string;
+    created_at: string;
+  } | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onStartConsultation: (advocateId: number) => void;
+}
+
+const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
+  advocate,
+  isOpen,
+  onClose,
+  onStartConsultation
+}) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'reviews'>('overview');
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && advocate && activeTab === 'reviews') {
+      fetchReviews();
+    }
+  }, [isOpen, advocate, activeTab]);
+
+  const fetchReviews = async () => {
+    if (!advocate) return;
+    
+    setLoadingReviews(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/advocate-chat/advocates/${advocate.id}/reviews`);
+      const data = await response.json();
+      if (data.success) {
+        setReviews(data.reviews || []);
+      }
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
+
+  const handleDocumentView = (documentUrl: string) => {
+    const fullUrl = documentUrl.startsWith('http') 
+      ? documentUrl 
+      : `${import.meta.env.VITE_API_URL}${documentUrl}`;
+    window.open(fullUrl, '_blank');
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const getDocumentName = (url: string) => {
+    const parts = url.split('/');
+    const filename = parts[parts.length - 1];
+    
+    // Try to make filename more readable
+    if (filename.includes('profilePhoto')) return 'Profile Photo';
+    if (filename.includes('documents')) return 'Legal Document';
+    if (filename.includes('certificate')) return 'Certificate';
+    if (filename.includes('degree')) return 'Degree Certificate';
+    if (filename.includes('bar')) return 'Bar Council Certificate';
+    
+    return filename.replace(/[-_]/g, ' ').replace(/\.[^/.]+$/, '');
+  };
+
+  if (!isOpen || !advocate) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+        >
+          {/* Header */}
+          <div className="relative bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 p-6 text-white">
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-start space-x-6">
+              {/* Profile Photo */}
+              <div className="relative">
+                <div className="w-24 h-24 rounded-2xl overflow-hidden bg-white/20 backdrop-blur-sm border-2 border-white/30">
+                  {advocate.profile_photo_url ? (
+                    <img
+                      src={advocate.profile_photo_url.startsWith('http') 
+                        ? advocate.profile_photo_url 
+                        : `${import.meta.env.VITE_API_URL}${advocate.profile_photo_url}`}
+                      alt={advocate.full_name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                  ) : null}
+                  <div className={`w-full h-full flex items-center justify-center ${advocate.profile_photo_url ? 'hidden' : ''}`}>
+                    <User className="w-12 h-12 text-white/70" />
+                  </div>
+                </div>
+                {advocate.is_online && (
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-2 border-white rounded-full"></div>
+                )}
+              </div>
+
+              {/* Basic Info */}
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold mb-2">{advocate.full_name}</h2>
+                <div className="flex items-center space-x-4 mb-3">
+                  <div className="flex items-center">
+                    <Star className="w-4 h-4 text-yellow-400 fill-current mr-1" />
+                    <span className="font-medium">{advocate.rating.toFixed(1)}</span>
+                    <span className="text-blue-100 ml-1">({advocate.total_reviews} reviews)</span>
+                  </div>
+                  <div className="flex items-center text-blue-100">
+                    <Briefcase className="w-4 h-4 mr-1" />
+                    <span>{advocate.total_consultations} consultations</span>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4 text-blue-100">
+                  <div className="flex items-center">
+                    <MapPin className="w-4 h-4 mr-1" />
+                    <span>{advocate.city}, {advocate.state}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Clock className="w-4 h-4 mr-1" />
+                    <span>{advocate.experience} years experience</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Consultation Fee */}
+              <div className="text-right">
+                <div className="text-2xl font-bold text-white">₹{advocate.consultation_fee}</div>
+                <div className="text-blue-100 text-sm">per consultation</div>
+                <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-2 ${
+                  advocate.is_online 
+                    ? 'bg-green-500/20 text-green-100 border border-green-400/30' 
+                    : 'bg-gray-500/20 text-gray-100 border border-gray-400/30'
+                }`}>
+                  <div className={`w-2 h-2 rounded-full mr-1 ${advocate.is_online ? 'bg-green-400' : 'bg-gray-400'}`} />
+                  {advocate.is_online ? 'Online' : 'Offline'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="border-b border-gray-200">
+            <div className="flex space-x-8 px-6">
+              {[
+                { id: 'overview', label: 'Overview', icon: User },
+                { id: 'documents', label: 'Documents', icon: FileText },
+                { id: 'reviews', label: 'Reviews', icon: Star }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center space-x-2 py-4 border-b-2 transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <tab.icon className="w-4 h-4" />
+                  <span className="font-medium"><LocalizedText text={tab.label} /></span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 overflow-y-auto max-h-[60vh]">
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                {/* Bio */}
+                {advocate.bio && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                      <User className="w-5 h-5 mr-2 text-blue-600" />
+                      <LocalizedText text="About" />
+                    </h3>
+                    <p className="text-gray-600 leading-relaxed">{advocate.bio}</p>
+                  </div>
+                )}
+
+                {/* Professional Details */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Contact Information */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                      <Phone className="w-5 h-5 mr-2 text-blue-600" />
+                      <LocalizedText text="Contact Information" />
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center">
+                        <Mail className="w-4 h-4 text-gray-400 mr-3" />
+                        <span className="text-gray-600">{advocate.email}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Phone className="w-4 h-4 text-gray-400 mr-3" />
+                        <span className="text-gray-600">{advocate.phone}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Scale className="w-4 h-4 text-gray-400 mr-3" />
+                        <span className="text-gray-600">Bar Council: {advocate.bar_council_number}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Professional Info */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                      <Award className="w-5 h-5 mr-2 text-blue-600" />
+                      <LocalizedText text="Professional Details" />
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center">
+                        <Calendar className="w-4 h-4 text-gray-400 mr-3" />
+                        <span className="text-gray-600">{advocate.experience} years of experience</span>
+                      </div>
+                      <div className="flex items-center">
+                        <GraduationCap className="w-4 h-4 text-gray-400 mr-3" />
+                        <span className="text-gray-600">Joined {formatDate(advocate.created_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Education */}
+                {advocate.education && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                      <GraduationCap className="w-5 h-5 mr-2 text-blue-600" />
+                      <LocalizedText text="Education" />
+                    </h3>
+                    <p className="text-gray-600">{advocate.education}</p>
+                  </div>
+                )}
+
+                {/* Specializations */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                    <Briefcase className="w-5 h-5 mr-2 text-blue-600" />
+                    <LocalizedText text="Specializations" />
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {advocate.specializations.map((spec, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
+                      >
+                        {spec}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Languages */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                    <Languages className="w-5 h-5 mr-2 text-blue-600" />
+                    <LocalizedText text="Languages" />
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {advocate.languages.map((lang, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium"
+                      >
+                        {lang}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Courts Practicing */}
+                {advocate.courts_practicing && advocate.courts_practicing.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                      <Scale className="w-5 h-5 mr-2 text-blue-600" />
+                      <LocalizedText text="Courts Practicing" />
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {advocate.courts_practicing.map((court, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium"
+                        >
+                          {court}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'documents' && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                  <FileText className="w-5 h-5 mr-2 text-blue-600" />
+                  <LocalizedText text="Uploaded Documents" />
+                </h3>
+                
+                {advocate.document_urls && advocate.document_urls.length > 0 ? (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {advocate.document_urls.map((docUrl, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                              <FileText className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-gray-800">
+                                {getDocumentName(docUrl)}
+                              </h4>
+                              <p className="text-sm text-gray-500">Document {index + 1}</p>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleDocumentView(docUrl)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="View Document"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDocumentView(docUrl)}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Download Document"
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">
+                      <LocalizedText text="No documents uploaded yet" />
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'reviews' && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                  <Star className="w-5 h-5 mr-2 text-blue-600" />
+                  <LocalizedText text="Client Reviews" />
+                </h3>
+                
+                {loadingReviews ? (
+                  <div className="text-center py-8">
+                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                    <p className="text-gray-500">
+                      <LocalizedText text="Loading reviews..." />
+                    </p>
+                  </div>
+                ) : reviews.length > 0 ? (
+                  <div className="space-y-4">
+                    {reviews.map((review, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-200 rounded-xl p-4"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                              <User className="w-4 h-4 text-gray-600" />
+                            </div>
+                            <span className="font-medium text-gray-800">{review.user_name}</span>
+                          </div>
+                          <div className="flex items-center">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-4 h-4 ${
+                                  i < review.rating
+                                    ? 'text-yellow-400 fill-current'
+                                    : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        {review.review_text && (
+                          <p className="text-gray-600 text-sm">{review.review_text}</p>
+                        )}
+                        <p className="text-xs text-gray-400 mt-2">
+                          {formatDate(review.created_at)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Star className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">
+                      <LocalizedText text="No reviews yet" />
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="border-t border-gray-200 p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center text-sm text-gray-500">
+                  <Shield className="w-4 h-4 mr-1" />
+                  <LocalizedText text="Verified Advocate" />
+                </div>
+                {advocate.last_seen && (
+                  <div className="text-sm text-gray-500">
+                    <LocalizedText text="Last seen" />: {formatDate(advocate.last_seen)}
+                  </div>
+                )}
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={onClose}
+                  className="px-6 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <LocalizedText text="Close" />
+                </button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    onStartConsultation(advocate.id);
+                    onClose();
+                  }}
+                  disabled={!advocate.is_online}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  <span><LocalizedText text="Start Consultation" /></span>
+                  <span className="text-lg">₹{advocate.consultation_fee}</span>
+                </motion.button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+};
+
+export default AdvocateProfileModal;

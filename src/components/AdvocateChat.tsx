@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import LocalizedText from './LocalizedText';
 import ChatHeader from './ChatHeader';
+import AdvocateProfileModal from './AdvocateProfileModal';
 import { auth } from '../firebase';
 
 interface Advocate {
@@ -24,6 +25,14 @@ interface Advocate {
   city: string;
   state: string;
   last_seen?: string;
+  email: string;
+  phone: string;
+  bar_council_number: string;
+  education: string;
+  courts_practicing: string[];
+  document_urls: string[];
+  total_reviews: number;
+  created_at: string;
 }
 
 interface Message {
@@ -65,6 +74,8 @@ const AdvocateChat: React.FC = () => {
   const [authError, setAuthError] = useState('');
   const [authReady, setAuthReady] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileAdvocate, setProfileAdvocate] = useState<Advocate | null>(null);
   const [filters, setFilters] = useState({
     specialization: '',
     language: '',
@@ -364,6 +375,32 @@ const AdvocateChat: React.FC = () => {
     }
   };
 
+  const handleViewProfile = async (advocate: Advocate) => {
+    try {
+      const token = await getAuthToken();
+      if (!token) return;
+
+      // Fetch complete advocate details
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/advocate-chat/advocates/${advocate.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setProfileAdvocate(data.advocate);
+        setShowProfileModal(true);
+      }
+    } catch (error) {
+      console.error('Error fetching advocate details:', error);
+      // Fallback to basic advocate data
+      setProfileAdvocate(advocate);
+      setShowProfileModal(true);
+    }
+  };
+
   const filteredAdvocates = advocates.filter(advocate =>
     advocate.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     advocate.specializations.some(spec => 
@@ -446,10 +483,7 @@ const AdvocateChat: React.FC = () => {
             </div>
             <div className="flex space-x-2">
               <button
-                onClick={() => {
-                  setSelectedAdvocate(advocate);
-                  setView('profile');
-                }}
+                onClick={() => handleViewProfile(advocate)}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors"
               >
                 <LocalizedText text="View Profile" />
@@ -696,6 +730,17 @@ const AdvocateChat: React.FC = () => {
 
         {view === 'list' && renderAdvocateList()}
         {view === 'chat' && renderChat()}
+
+        {/* Advocate Profile Modal */}
+        <AdvocateProfileModal
+          advocate={profileAdvocate}
+          isOpen={showProfileModal}
+          onClose={() => {
+            setShowProfileModal(false);
+            setProfileAdvocate(null);
+          }}
+          onStartConsultation={startConsultation}
+        />
       </motion.div>
     </div>
   );

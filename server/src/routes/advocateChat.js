@@ -276,17 +276,18 @@ router.get('/advocates', authenticateUser, async (req, res) => {
   }
 });
 
-// Get advocate details
+// Get advocate details with complete information
 router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
   try {
     const { advocateId } = req.params;
 
     const [advocates] = await pool.execute(`
       SELECT 
-        id, full_name, specializations, languages, experience,
-        consultation_fee, rating, total_consultations, is_online,
-        profile_photo_url, bio, city, state, education,
-        courts_practicing, bar_council_number, last_seen
+        id, full_name, email, phone, bar_council_number, experience,
+        specializations, languages, education, courts_practicing,
+        consultation_fee, rating, total_consultations, total_reviews,
+        is_online, profile_photo_url, document_urls, bio, city, state, 
+        last_seen, created_at
       FROM advocates 
       WHERE id = ? AND status = 'approved'
     `, [advocateId]);
@@ -313,7 +314,8 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
         ...advocate,
         specializations: safeJsonParse(advocate.specializations, []),
         languages: safeJsonParse(advocate.languages, []),
-        courtsPracticing: safeJsonParse(advocate.courts_practicing, []),
+        courts_practicing: safeJsonParse(advocate.courts_practicing, []),
+        document_urls: safeJsonParse(advocate.document_urls, []),
         profile_photo_url: advocate.profile_photo_url 
           ? (advocate.profile_photo_url.startsWith('http') 
               ? advocate.profile_photo_url 
@@ -327,6 +329,37 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
     return res.status(500).json({ 
       success: false, 
       error: 'Failed to get advocate details: ' + error.message 
+    });
+  }
+});
+
+// Get advocate reviews
+router.get('/advocates/:advocateId/reviews', authenticateUser, async (req, res) => {
+  try {
+    const { advocateId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const [reviews] = await pool.execute(`
+      SELECT 
+        ar.rating, ar.review_text, ar.created_at,
+        u.name as user_name
+      FROM advocate_reviews ar
+      JOIN users u ON ar.user_id = u.id
+      WHERE ar.advocate_id = ?
+      ORDER BY ar.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [advocateId, parseInt(limit), offset]);
+
+    return res.json({
+      success: true,
+      reviews
+    });
+  } catch (error) {
+    console.error('Get advocate reviews error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to get reviews: ' + error.message 
     });
   }
 });
