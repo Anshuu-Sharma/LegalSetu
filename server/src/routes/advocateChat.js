@@ -298,9 +298,13 @@ router.get('/advocates/:advocateId', authenticateUser, async (req, res) => {
 
     const advocate = advocates[0];
 
-    // Get recent reviews
+    // ✅ FIXED: Get recent reviews with proper column aliasing to avoid ambiguity
     const [reviews] = await pool.execute(`
-      SELECT rating, review_text, created_at, u.name as user_name
+      SELECT 
+        ar.rating, 
+        ar.review_text, 
+        ar.created_at as review_date,
+        u.name as user_name
       FROM advocate_reviews ar
       JOIN users u ON ar.user_id = u.id
       WHERE ar.advocate_id = ?
@@ -340,9 +344,12 @@ router.get('/advocates/:advocateId/reviews', authenticateUser, async (req, res) 
     const { page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
 
+    // ✅ FIXED: Use proper column aliasing to avoid ambiguity
     const [reviews] = await pool.execute(`
       SELECT 
-        ar.rating, ar.review_text, ar.created_at,
+        ar.rating, 
+        ar.review_text, 
+        ar.created_at as review_date,
         u.name as user_name
       FROM advocate_reviews ar
       JOIN users u ON ar.user_id = u.id
@@ -353,7 +360,10 @@ router.get('/advocates/:advocateId/reviews', authenticateUser, async (req, res) 
 
     return res.json({
       success: true,
-      reviews
+      reviews: reviews.map(review => ({
+        ...review,
+        created_at: review.review_date // Map back to expected field name
+      }))
     });
   } catch (error) {
     console.error('Get advocate reviews error:', error);
