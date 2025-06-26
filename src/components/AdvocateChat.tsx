@@ -85,6 +85,22 @@ const AdvocateChat: React.FC = () => {
     'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Urdu'
   ];
 
+  // Helper function to safely format rating
+  const formatRating = (rating: any): string => {
+    if (rating === null || rating === undefined || isNaN(Number(rating))) {
+      return '0.0';
+    }
+    return Number(rating).toFixed(1);
+  };
+
+  // Helper function to safely get number value
+  const safeNumber = (value: any, defaultValue: number = 0): number => {
+    if (value === null || value === undefined || isNaN(Number(value))) {
+      return defaultValue;
+    }
+    return Number(value);
+  };
+
   // Get Firebase token for authentication
   const getAuthToken = async () => {
     try {
@@ -212,8 +228,19 @@ const AdvocateChat: React.FC = () => {
       console.log('📡 Response data:', data);
 
       if (data.success) {
-        setAdvocates(data.advocates);
-        console.log(`✅ Successfully loaded ${data.advocates.length} advocates`);
+        // Safely process advocates data
+        const processedAdvocates = data.advocates.map((advocate: any) => ({
+          ...advocate,
+          rating: safeNumber(advocate.rating, 0),
+          consultation_fee: safeNumber(advocate.consultation_fee, 0),
+          total_consultations: safeNumber(advocate.total_consultations, 0),
+          experience: safeNumber(advocate.experience, 0),
+          specializations: Array.isArray(advocate.specializations) ? advocate.specializations : [],
+          languages: Array.isArray(advocate.languages) ? advocate.languages : []
+        }));
+        
+        setAdvocates(processedAdvocates);
+        console.log(`✅ Successfully loaded ${processedAdvocates.length} advocates`);
       } else {
         setError(data.error || 'Failed to load advocates');
         console.error('❌ API error:', data.error);
@@ -376,14 +403,14 @@ const AdvocateChat: React.FC = () => {
               <div className="flex items-center space-x-2 mt-1">
                 <div className="flex items-center">
                   <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                  <span className="text-sm text-gray-600 ml-1">{advocate.rating.toFixed(1)}</span>
+                  <span className="text-sm text-gray-600 ml-1">{formatRating(advocate.rating)}</span>
                 </div>
                 <span className="text-gray-300">•</span>
-                <span className="text-sm text-gray-600">{advocate.total_consultations} consultations</span>
+                <span className="text-sm text-gray-600">{safeNumber(advocate.total_consultations)} consultations</span>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-lg font-bold text-green-600">₹{advocate.consultation_fee}</div>
+              <div className="text-lg font-bold text-green-600">₹{safeNumber(advocate.consultation_fee)}</div>
               <div className="text-xs text-gray-500">per consultation</div>
             </div>
           </div>
