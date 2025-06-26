@@ -281,6 +281,7 @@ const AdvocateChat: React.FC = () => {
       const data = await response.json();
       if (data.success) {
         setConsultations(data.consultations);
+        console.log('✅ Consultations loaded:', data.consultations.length);
       }
     } catch (error) {
       console.error('Error fetching consultations:', error);
@@ -309,14 +310,19 @@ const AdvocateChat: React.FC = () => {
   };
 
   const startConsultation = async (advocateId: number) => {
+    console.log('🚀 Starting consultation with advocate:', advocateId);
     setLoading(true);
+    setError(''); // Clear any previous errors
+    
     try {
       const token = await getAuthToken();
       if (!token) {
-        alert('Please login first');
+        setError('Please login first');
+        setLoading(false);
         return;
       }
 
+      console.log('📡 Sending consultation request...');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/advocate-chat/consultations/start`, {
         method: 'POST',
         headers: {
@@ -326,20 +332,44 @@ const AdvocateChat: React.FC = () => {
         body: JSON.stringify({ advocateId, consultationType: 'chat' })
       });
 
+      console.log('📡 Consultation response status:', response.status);
       const data = await response.json();
-      if (data.success) {
+      console.log('📡 Consultation response data:', data);
+
+      if (data.success && data.consultation) {
+        console.log('✅ Consultation created successfully:', data.consultation);
+        
+        // Refresh consultations to get the latest data
         await fetchConsultations();
-        const newConsultation = consultations.find(c => c.id === data.consultation.id);
-        if (newConsultation) {
-          setActiveConsultation(newConsultation);
-          setView('chat');
-        }
+        
+        // Create a consultation object for immediate use
+        const newConsultation: Consultation = {
+          id: data.consultation.id,
+          advocate_id: data.consultation.advocateId,
+          advocate_name: data.consultation.advocateName,
+          consultation_type: data.consultation.consultationType,
+          fee_amount: data.consultation.feeAmount,
+          status: data.consultation.status,
+          started_at: new Date().toISOString(),
+          chat_room_id: data.consultation.id, // Use consultation ID as room ID
+          profile_photo_url: advocates.find(a => a.id === advocateId)?.profile_photo_url
+        };
+        
+        console.log('🔄 Setting active consultation and switching to chat view...');
+        setActiveConsultation(newConsultation);
+        setView('chat');
+        
+        // Clear any messages from previous chats
+        setMessages([]);
+        
+        console.log('✅ Successfully transitioned to chat view');
       } else {
-        alert(data.error || 'Failed to start consultation');
+        console.error('❌ Consultation creation failed:', data.error);
+        setError(data.error || 'Failed to start consultation');
       }
     } catch (error) {
-      console.error('Error starting consultation:', error);
-      alert('Failed to start consultation');
+      console.error('❌ Error starting consultation:', error);
+      setError('Failed to start consultation. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -493,8 +523,14 @@ const AdvocateChat: React.FC = () => {
                 disabled={!advocate.is_online || loading}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
               >
-                <MessageCircle className="w-4 h-4" />
-                <span><LocalizedText text="Chat Now" /></span>
+                {loading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <MessageCircle className="w-4 h-4" />
+                    <span><LocalizedText text="Chat Now" /></span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -562,6 +598,16 @@ const AdvocateChat: React.FC = () => {
         </div>
       </div>
 
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center">
+            <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+            <span className="text-red-700">{error}</span>
+          </div>
+        </div>
+      )}
+
       {/* Auth Error */}
       {authError && (
         <div className="text-center py-12">
@@ -588,25 +634,6 @@ const AdvocateChat: React.FC = () => {
           <h3 className="text-lg font-medium text-gray-800 mb-2">
             <LocalizedText text="Loading advocates..." />
           </h3>
-        </div>
-      )}
-
-      {/* Error State */}
-      {error && !authError && (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-8 h-8 text-red-600" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-800 mb-2">
-            <LocalizedText text="Error loading advocates" />
-          </h3>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={fetchAdvocates}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <LocalizedText text="Try Again" />
-          </button>
         </div>
       )}
 
@@ -640,13 +667,25 @@ const AdvocateChat: React.FC = () => {
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
         <div className="flex items-center space-x-3">
           <button
-            onClick={() => setView('list')}
+            onClick={() => {
+              setView('list');
+              setActiveConsultation(null);
+              setMessages([]);
+            }}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-            <User className="w-6 h-6 text-white" />
+            {activeConsultation?.profile_photo_url ? (
+              <img
+                src={activeConsultation.profile_photo_url}
+                alt={activeConsultation.advocate_name}
+                className="w-full h-full rounded-xl object-cover"
+              />
+            ) : (
+              <User className="w-6 h-6 text-white" />
+            )}
           </div>
           <div>
             <h3 className="font-semibold text-gray-800">{activeConsultation?.advocate_name}</h3>
@@ -668,27 +707,36 @@ const AdvocateChat: React.FC = () => {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-                message.sender_type === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-800'
-              }`}
-            >
-              <p className="text-sm">{message.message}</p>
-              <p className={`text-xs mt-1 ${
-                message.sender_type === 'user' ? 'text-blue-100' : 'text-gray-500'
-              }`}>
-                {new Date(message.created_at).toLocaleTimeString()}
-              </p>
-            </div>
+        {messages.length === 0 ? (
+          <div className="text-center py-8">
+            <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">
+              <LocalizedText text="Start your conversation with the advocate" />
+            </p>
           </div>
-        ))}
+        ) : (
+          messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                  message.sender_type === 'user'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-800'
+                }`}
+              >
+                <p className="text-sm">{message.message}</p>
+                <p className={`text-xs mt-1 ${
+                  message.sender_type === 'user' ? 'text-blue-100' : 'text-gray-500'
+                }`}>
+                  {new Date(message.created_at).toLocaleTimeString()}
+                </p>
+              </div>
+            </div>
+          ))
+        )}
         <div ref={messagesEndRef} />
       </div>
 
