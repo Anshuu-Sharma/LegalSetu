@@ -107,10 +107,11 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
               <motion.button
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
+                onClick={() => setActiveSection('advocate-chat')}
                 className="group bg-white/80 backdrop-blur-sm text-gray-700 px-8 py-4 rounded-2xl font-semibold text-lg border border-gray-200 hover:border-blue-300 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
               >
-                <Play className="mr-2 w-5 h-5" />
-                <LocalizedText text="Watch Demo" />
+                <LocalizedText text="Chat now!" />
+                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </motion.button>
             </div>
 

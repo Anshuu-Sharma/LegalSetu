@@ -825,7 +825,7 @@ const AdvocateChat: React.FC = () => {
             </div>
             <div className="text-right">
               <div className="text-lg font-bold text-green-600">₹{safeNumber(advocate.consultation_fee)}</div>
-              <div className="text-xs text-gray-500">per consultation</div>
+              <div className="text-xs text-gray-500">per minute</div>
             </div>
           </div>
 
