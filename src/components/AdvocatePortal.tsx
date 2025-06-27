@@ -168,14 +168,14 @@ const AdvocatePortal: React.FC = () => {
               <LocalizedText text="Sign In as Advocate" />
             </motion.button>
             
-            <motion.button
+            {/* <motion.button
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => window.location.href = '#advocate-registration'}
               className="px-8 py-4 bg-white text-purple-600 rounded-2xl font-semibold border-2 border-purple-200 hover:border-purple-300 shadow-lg hover:shadow-xl transition-all duration-300"
             >
               <LocalizedText text="Register as Advocate" />
-            </motion.button>
+            </motion.button> */}
           </div>
 
           {/* Demo Info */}

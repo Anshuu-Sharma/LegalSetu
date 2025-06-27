@@ -960,11 +960,11 @@ const AdvocateChat: React.FC = () => {
             className="w-16 h-16 rounded-2xl"
             fallbackIcon={<User className="w-8 h-8 text-white" />}
           />
-          {advocate.is_online && (
+          {/* {advocate.is_online && (
             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full flex items-center justify-center">
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"> </div>
             </div>
-          )}
+          )} */}
         </div>
 
         <div className="flex-1">
