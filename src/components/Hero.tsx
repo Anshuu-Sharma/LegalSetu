@@ -11,7 +11,7 @@ interface HeroProps {
 
 const dropVariants = {
   initial: { opacity: 0, y: -120, scale: 1 },
-  animate: { opacity: 1, y: 0, scale:1, transition: { type: 'spring', stiffness: 120, damping: 18 } },
+  animate: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 120, damping: 18 } },
 };
 
 const floatTransition = {
@@ -77,20 +77,22 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
               </span>
             </motion.div>
 
-            <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-9 ">
-              <span className="bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent">
-                <LocalizedText text="Your AI-Powered" />
+            <h1 className="text-5xl md:text-5xl font-bold leading-tight mb-9 ">
+              <i className="fa-solid fa-quote-left fa-2xs"></i>
+              <span className="bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent italic">
+                <LocalizedText text=" Giving hope to the hopeless," />
               </span>
               <br />
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent pb-6">
-                <LocalizedText text="Legal Buddy" />
+              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent pb-6 italic">
+                <LocalizedText text="voice to the voiceless " />
+                <i className="fa-solid fa-quote-right fa-2xs"></i>
               </span>
             </h1>
-            
+
             <p className="text-xl text-gray-600 mb-10 leading-relaxed max-w-2xl">
               <LocalizedText text="Get instant legal advice, document analysis, and form assistance in multiple Indian languages. Our advanced AI advocate helps you navigate complex legal matters with confidence." />
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-12">
               <motion.button
                 whileHover={{ scale: 1.05, y: -2 }}
@@ -101,7 +103,7 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
                 <LocalizedText text="Ask now!" />
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </motion.button>
-              
+
               <motion.button
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
@@ -163,15 +165,15 @@ const Hero: React.FC<HeroProps> = ({ setActiveSection }) => {
               {/* Floating Elements */}
               <div className="absolute -top-4 -right-4 w-8 h-8 bg-green-400 rounded-full animate-pulse"></div>
               <div className="absolute -bottom-4 -left-4 w-6 h-6 bg-blue-400 rounded-full animate-bounce"></div>
-              
+
               {/* AI Avatar */}
               <div className="text-center mb-8">
                 <motion.div
-                  animate={{ 
+                  animate={{
                     scale: [1, 1.05, 1],
                     rotate: [0, 2, -2, 0]
                   }}
-                  transition={{ 
+                  transition={{
                     duration: 4,
                     repeat: Infinity,
                     ease: "easeInOut"
