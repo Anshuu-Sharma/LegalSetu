@@ -211,9 +211,9 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
                   className="w-24 h-24 rounded-2xl border-2 border-white/30"
                   fallbackIcon={<User className="w-12 h-12 text-white/70" />}
                 />
-                {advocate.is_online && (
+                {/* {advocate.is_online && (
                   <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-2 border-white rounded-full"></div>
-                )}
+                )} */}
               </div>
 
               {/* Basic Info */}
@@ -245,7 +245,7 @@ const AdvocateProfileModal: React.FC<AdvocateProfileModalProps> = ({
               {/* Consultation Fee */}
               <div className="text-right">
                 <div className="text-2xl font-bold text-white">₹{safeNumber(advocate.consultation_fee)}</div>
-                <div className="text-blue-100 text-sm">per consultation</div>
+                <div className="text-blue-100 text-sm">per minute</div>
                 <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-2 ${
                   advocate.is_online 
                     ? 'bg-green-500/20 text-green-100 border border-green-400/30' 
