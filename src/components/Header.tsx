@@ -143,6 +143,7 @@ const Header: React.FC<HeaderProps> = ({
 
       {/* Desktop Nav */}
       <nav className="hidden navcut:flex items-center space-x-2">
+        <br />
         {navigation.map((item, index) => (
           <motion.button
             key={item.id}
