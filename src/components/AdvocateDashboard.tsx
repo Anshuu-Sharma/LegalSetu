@@ -84,52 +84,6 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
     return Number(value);
   };
 
-  // Safe image component with error handling
-  const SafeImage: React.FC<{
-    src?: string | null;
-    alt: string;
-    className?: string;
-    fallbackIcon?: React.ReactNode;
-  }> = ({ src, alt, className = "", fallbackIcon }) => {
-    const [imageError, setImageError] = useState(false);
-    const [imageLoading, setImageLoading] = useState(true);
-
-    useEffect(() => {
-      setImageError(false);
-      setImageLoading(true);
-    }, [src]);
-
-    if (!src || imageError) {
-      return (
-        <div className={`${className} bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center`}>
-          {fallbackIcon || <User className="w-8 h-8 text-white" />}
-        </div>
-      );
-    }
-
-    return (
-      <div className={`${className} relative overflow-hidden`}>
-        {imageLoading && (
-          <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
-            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        )}
-        <img
-          src={src}
-          alt={alt}
-          className={`w-full h-full object-cover ${imageLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
-          onLoad={() => setImageLoading(false)}
-          onError={() => {
-            console.warn('❌ Image failed to load:', src);
-            setImageError(true);
-            setImageLoading(false);
-          }}
-          referrerPolicy="no-referrer"
-        />
-      </div>
-    );
-  };
-
   // Get advocate token
   const getAdvocateToken = () => {
     return localStorage.getItem('advocateToken');
@@ -256,9 +210,9 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
     }
   }, [activeConsultation]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  // useEffect(() => {
+  //   messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // }, [messages]);
 
   const fetchConsultations = async () => {
     try {
@@ -734,12 +688,17 @@ const AdvocateDashboard: React.FC<AdvocateDashboardProps> = ({ advocateData, onL
           <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <SafeImage
-                  src={advocateData.profilePhotoUrl}
-                  alt={advocateData.fullName}
-                  className="w-16 h-16 rounded-2xl"
-                  fallbackIcon={<User className="w-8 h-8 text-white" />}
-                />
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center">
+                  {advocateData.profilePhotoUrl ? (
+                    <img
+                      src={advocateData.profilePhotoUrl}
+                      alt={advocateData.fullName}
+                      className="w-full h-full rounded-2xl object-cover"
+                    />
+                  ) : (
+                    <User className="w-8 h-8 text-white" />
+                  )}
+                </div>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-800">
                     <LocalizedText text="Welcome back" />, {advocateData.fullName}

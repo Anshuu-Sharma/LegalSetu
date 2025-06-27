@@ -116,7 +116,7 @@ const initializeAdvocateDatabase = async () => {
       )
     `);
 
-    // User chat history table
+    // User chat history table for persistent storage
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS user_chat_history (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -125,18 +125,20 @@ const initializeAdvocateDatabase = async () => {
         advocate_id INT NOT NULL,
         advocate_name VARCHAR(255) NOT NULL,
         advocate_photo_url VARCHAR(500),
-        messages JSON,
+        messages JSON NOT NULL,
         last_message TEXT,
         last_message_time TIMESTAMP NULL,
         message_count INT DEFAULT 0,
-        consultation_status VARCHAR(20) DEFAULT 'active',
+        consultation_status ENUM('active', 'completed', 'cancelled') DEFAULT 'active',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY unique_user_consultation (user_id, consultation_id),
         INDEX idx_user_id (user_id),
         INDEX idx_consultation_id (consultation_id),
         INDEX idx_advocate_id (advocate_id),
+        INDEX idx_updated_at (updated_at),
+        UNIQUE KEY unique_user_consultation (user_id, consultation_id),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (consultation_id) REFERENCES consultations(id) ON DELETE CASCADE,
         FOREIGN KEY (advocate_id) REFERENCES advocates(id) ON DELETE CASCADE
       )
     `);
