@@ -1,6 +1,6 @@
 # 🇮🇳 LegalSetu – India’s AI-Powered Multilingual Legal Assistant 🤖📚⚖️
 
-**LegalSetu** is a groundbreaking AI platform crafted for the unique needs of the Indian legal landscape. It empowers citizens to navigate laws, analyze legal documents, understand the Constitution, and fill legal forms — all in **their preferred Indian language**, via **voice or text**.
+**LegalSetu** is a groundbreaking AI platform crafted for the unique needs of the Indian legal landscape. It empowers citizens to navigate laws, analyze legal documents, explore the Constitution, find nearby lawyers, chat with advocates, and fill legal forms — all in **their preferred Indian language**, via **voice or text**.
 
 This is not just a tool — it’s a **mission to make legal help accessible, understandable, and inclusive for every Indian**, from metro cities to remote villages.
 
@@ -12,6 +12,7 @@ This is not just a tool — it’s a **mission to make legal help accessible, un
 - 🌐 **Multilingual Everything**: Interface, chat, voice, input, and output — all in **10+ Indian languages**
 - 🗣️ **Ask in your voice, get answers in your language**
 - ⚡ **Powered by AI** for instant results and smart analysis
+- 👨‍⚖️ **Real Lawyers, Real Chat** via **Advotalk**
 
 ---
 
@@ -75,9 +76,26 @@ This is not just a tool — it’s a **mission to make legal help accessible, un
 - 🗺️ Direct link to Maps for real-time navigation  
 - ☎️ One-tap call to connect
 
-**Built with**: Google Maps API + custom filtering logic + Firebase
+**Built with**: Google Maps API + Firebase + Custom Logic
 
-**Use Case**: A villager needs legal aid on property. They search, see 3 lawyers nearby, sort by experience, and call one instantly — no middleman.
+---
+
+### 🧑‍⚖️ Advotalk – Live Chat with Verified Advocates *(New)*
+
+> Real-time legal advice, directly from qualified professionals.
+
+**How it works**:
+- 🔐 Advocates register and verify their profile
+- 📂 Users browse detailed advocate profiles
+- 💬 Initiate a live consultation directly from the app
+- 🔁 Chat with advocates in real-time using Socket.IO
+- 🌍 Multilingual and TTS/STT-enabled for voice-based interaction
+
+**Tech Stack**:
+- Frontend: React + Firebase Auth + Voice & Translation Context  
+- Backend: Node.js + Express + Socket.IO + MySQL + AWS S3  
+- Auth: JWT (for Advocates), Firebase (for Users)  
+- Real-time: Secure WebSocket connections with room-based architecture
 
 ---
 
@@ -107,9 +125,10 @@ _(More coming soon)_
 ## 🔐 Security & Authentication
 
 - Firebase Authentication (Email & Google Sign-In)  
-- Secure sessions  
+- JWT for Advocate sessions  
+- Secure sessions and database isolation  
 - Encrypted file handling  
-- Document storage on **AWS S3**
+- AWS S3 for profile/doc storage
 
 ---
 
@@ -118,12 +137,13 @@ _(More coming soon)_
 | Layer        | Tech Used |
 |--------------|-----------|
 | 💻 Frontend  | Vite + React, Tailwind CSS, Framer Motion |
-| 🔐 Auth      | Firebase Authentication |
-| ☁️ Storage   | AWS S3 + MySQL Database |
-| 🧠 AI Models | Gemini + Google Translate (India-tuned) |
-| 🗣️ Voice     | Google Cloud Text to Speech  (Text ↔ Speech, multilingual) |
-| 🌐 Maps      | Google Maps API |
+| 🔐 Auth      | Firebase + JWT |
+| ☁️ Storage   | AWS S3 + MySQL |
+| 🧠 AI Models | Gemini + Google Translate |
+| 🗣️ Voice     | Google Cloud Text-to-Speech & Speech-to-Text |
 | 📦 OCR       | AI-based image & PDF parsing |
+| 🌍 Maps      | Google Maps API |
+| 🔌 Real-time | Socket.IO for advocate chat |
 
 ---
 
@@ -137,13 +157,14 @@ _(More coming soon)_
 | 🧓 *Senior Citizen* | Use voice to fill pension form in Kannada → download prefilled form |
 | 👩‍🦰 *Working Woman* | Get legal protection info against workplace harassment in regional language |
 | 👨‍⚖️ *Law Seeker*     | Use the “Advocate” feature to locate nearby legal help instantly |
+| 🗣️ *Real-Time Talker* | Chat directly with a live advocate using voice + multilingual text |
 
 ---
 
 ## 🔮 What’s Coming Soon
 
 - 🧾 Audio summaries for long documents  
-- 🗓️ Legal expert integrations (consultations)  
+- 📞 Voice call with Advocates  
 - 📱 Android/iOS App  
 - 📢 WhatsApp chatbot  
 - 🗣️ Expansion to **20+ Indian languages**
@@ -151,4 +172,6 @@ _(More coming soon)_
 ---
 
 > ⚖️ **LegalSetu is not just software — it’s a legal revolution for Bharat.**  
-> Now, legal help doesn’t need to be confusing, English-only, or lawyer-dependent. It’s just a few taps and one voice away — in your language.
+> Now, legal help doesn’t need to be confusing, English-only, or lawyer-dependent.  
+> It's just a few taps and one voice away — in your language.  
+> From AI chat to real advocate support — we’ve got you covered.
