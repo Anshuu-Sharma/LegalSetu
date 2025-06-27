@@ -64,14 +64,14 @@ const Header: React.FC<HeaderProps> = ({
 
   const navigation = [
     { name: 'Home', id: 'home' },
+    { name: 'Advocate Portal', id: 'advocate-portal' }
+    { name: 'AdvoTalk', id: 'advocate-chat' },
     { name: 'Neeti', id: 'chat' },
     { name: 'Document Analysis', id: 'documents' },
     { name: 'Constitution', id: 'cases' }, 
-    { name: 'Form Assistant', id: 'forms' },
-    { name: 'AdvoTalk', id: 'advocate-chat' },
-    // { name: 'About Us', id: 'about_us' },
     { name: 'Find Advocate', id: 'advocate' },
-    { name: 'Advocate Portal', id: 'advocate-portal' }
+    { name: 'Form Assistant', id: 'forms' },
+    // { name: 'About Us', id: 'about_us' },
   ];
 
   const getUserLabel = () =>
