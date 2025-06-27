@@ -20,7 +20,7 @@ This is not just a tool — it’s a **mission to make legal help accessible, un
 
 ---
 
-### 🧠 AI Legal Advisor (Chatbot)
+### 🧠 Neeti
 
 > Your personal lawyer in your pocket — available in your own language.
 
@@ -53,7 +53,7 @@ This is not just a tool — it’s a **mission to make legal help accessible, un
 
 ---
 
-### 📝 Smart AI Form Filler (For-milling)
+### 📝 Smart AI Form Filler (Form-Filling)
 
 > Filling complex government forms? Let AI handle it — with your guidance, in your language.
 
@@ -89,7 +89,6 @@ This is not just a tool — it’s a **mission to make legal help accessible, un
 - 📂 Users browse detailed advocate profiles
 - 💬 Initiate a live consultation directly from the app
 - 🔁 Chat with advocates in real-time using Socket.IO
-- 🌍 Multilingual and TTS/STT-enabled for voice-based interaction
 
 **Tech Stack**:
 - Frontend: React + Firebase Auth + Voice & Translation Context  
@@ -103,17 +102,19 @@ This is not just a tool — it’s a **mission to make legal help accessible, un
 
 LegalSetu works entirely in:
 
-- 🇮🇳 Hindi  
-- 📿 Bengali  
-- 🛕 Tamil  
-- 🎶 Telugu  
-- 🎨 Marathi  
-- 🥁 Kannada  
-- 🌺 Malayalam  
-- 🥻 Gujarati  
-- 🕌 Urdu  
-- 🏔️ Punjabi  
-_(More coming soon)_
+- 🇬🇧 English  
+- 🇮🇳 हिंदी (Hindi)  
+- 📿 বাংলা (Bengali)  
+- 🎶 తెలుగు (Telugu)  
+- 🛕 தமிழ் (Tamil)  
+- 🎨 मराठी (Marathi)  
+- 🥻 ગુજરાતી (Gujarati)  
+- 🥁 ಕನ್ನಡ (Kannada)  
+- 🌺 മലയാളം (Malayalam)  
+- 🌀 ଓଡ଼ିଆ (Odia)  
+- 🏔️ ਪੰਜਾਬੀ (Punjabi)  
+- 🌾 অসমীয়া (Assamese)  
+- 🕌 اُردُو‎ (Urdu)  
 
 ✅ Regional Language UI  
 ✅ Regional Language Chat  
