@@ -92,7 +92,7 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
               <li>
                 <button
                   className="hover:underline  bg-transparent border-none p-0"
-                  onClick={() => setActiveSection('advocate')}
+                  onClick={() => setActiveSection('advocate-portal')}
                 >
                   <LocalizedText text="Advocate Portal" />
                 </button>
