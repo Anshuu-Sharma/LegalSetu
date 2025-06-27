@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
+import { 
   Search, Filter, Star, MapPin, Clock, MessageCircle,
   Phone, Video, User, Send, ArrowLeft, MoreVertical,
   CheckCircle, Circle, Heart, Shield, RefreshCw, AlertCircle,
-  Wifi, WifiOff
+  Wifi, WifiOff, Trash2, Archive, Clock12
 } from 'lucide-react';
 import LocalizedText from './LocalizedText';
 import ChatHeader from './ChatHeader';
 import AdvocateProfileModal from './AdvocateProfileModal';
 import { auth } from '../firebase';
 import { io, Socket } from 'socket.io-client';
-import { useTranslation } from '../contexts/TranslationContext';
 
 interface Advocate {
   id: number;
@@ -63,8 +62,26 @@ interface Consultation {
   last_message_time?: string;
 }
 
+interface ChatHistory {
+  id: number;
+  consultation_id: number;
+  advocate_id: number;
+  advocate_name: string;
+  advocate_photo_url?: string;
+  advocate_is_online: boolean;
+  advocate_rating: number;
+  consultation_fee: number;
+  last_message?: string;
+  last_message_time?: string;
+  message_count: number;
+  consultation_status: string;
+  messages: Message[];
+  created_at: string;
+  updated_at: string;
+}
+
 const AdvocateChat: React.FC = () => {
-  const [view, setView] = useState<'list' | 'chat' | 'profile'>('list');
+  const [view, setView] = useState<'list' | 'chat' | 'history' | 'profile'>('list');
   const [advocates, setAdvocates] = useState<Advocate[]>([]);
   const [selectedAdvocate, setSelectedAdvocate] = useState<Advocate | null>(null);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
@@ -89,24 +106,12 @@ const AdvocateChat: React.FC = () => {
     maxFee: '',
     isOnline: false
   });
-  const [translatedLanguages, setTranslatedLanguages] = useState<{ original: string; translated: string }[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
+  const [chatHistoryLoading, setChatHistoryLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { t, language } = useTranslation();
-  const [placeholders, setPlaceholders] = useState({
-    search: "Search advocates by name or specialization...",
-    typeMessage: "Type your message...",
-    allSpecializations: "All Specializations",
-    allLanguages: "All Languages",
-    refresh: "Refresh",
-    onlineOnly: "Online Only"
-  });
-  const [translationsLoaded, setTranslationsLoaded] = useState(false);
-  const [translatedSpecializations, setTranslatedSpecializations] = useState<{ original: string; translated: string }[]>([]);
-  const [translatedAdvocates, setTranslatedAdvocates] = useState<Advocate[]>([]);
-
 
   const specializations = [
     'Criminal Law', 'Civil Law', 'Corporate Law', 'Family Law',
@@ -180,70 +185,11 @@ const AdvocateChat: React.FC = () => {
     );
   };
 
-  const translateAdvocateData = async (advocates: Advocate[]) => {
-    if (!advocates.length) return [];
-
-    try {
-      const translated = await Promise.all(
-        advocates.map(async (advocate) => {
-          try {
-            const [translatedBio, translatedName, translatedCity, translatedState, translatedSpecializations, translatedLanguages] = await Promise.all([
-              t(advocate.bio).catch(() => advocate.bio),
-              t(advocate.full_name).catch(() => advocate.full_name),
-              t(advocate.city).catch(() => advocate.city),
-              t(advocate.state).catch(() => advocate.state),
-              Promise.all(
-                advocate.specializations.map(spec => 
-                  t(spec).catch(() => spec)
-                )
-              ),
-              Promise.all(
-                advocate.languages.map(lang => 
-                  t(lang).catch(() => lang)
-                )
-              )
-            ]);
-        
-            return {
-              ...advocate,
-              bio: translatedBio,
-              full_name: translatedName,
-              city: translatedCity,
-              state: translatedState,
-              specializations: translatedSpecializations,
-              languages: translatedLanguages, // Add this line
-              // Keep originals for reference
-              originalBio: advocate.bio,
-              originalName: advocate.full_name,
-              originalCity: advocate.city,
-              originalState: advocate.state,
-              originalSpecializations: advocate.specializations,
-              originalLanguages: advocate.languages // Add this line
-            };
-            
-            
-            
-            
-          } catch (error) {
-            console.warn(`Translation failed for advocate ${advocate.id}:`, error);
-            return advocate;
-          }
-        })
-      );
-
-      return translated;
-    } catch (error) {
-      console.error('Advocate translation error:', error);
-      return advocates;
-    }
-  };
-
-
   // Initialize Socket.IO connection
   useEffect(() => {
     if (authReady && currentUser) {
       console.log('🔌 Initializing Socket.IO connection...');
-
+      
       const socket = io(import.meta.env.VITE_API_URL, {
         transports: ['websocket', 'polling'],
         timeout: 20000,
@@ -254,7 +200,7 @@ const AdvocateChat: React.FC = () => {
       socket.on('connect', () => {
         console.log('✅ Socket.IO connected');
         setIsConnected(true);
-
+        
         // Join user room for real-time notifications
         socket.emit('join-room', {
           userId: currentUser.uid,
@@ -270,11 +216,17 @@ const AdvocateChat: React.FC = () => {
       // Listen for real-time advocate status updates
       socket.on('advocate-status-update', (data) => {
         console.log('📡 Advocate status update:', data);
-        setAdvocates(prev => prev.map(advocate =>
-          advocate.id === data.advocateId
+        setAdvocates(prev => prev.map(advocate => 
+          advocate.id === data.advocateId 
             ? { ...advocate, is_online: data.isOnline }
             : advocate
         ));
+      });
+
+      // Listen for advocate deletion
+      socket.on('advocate-deleted', (data) => {
+        console.log('🗑️ Advocate deleted:', data);
+        setAdvocates(prev => prev.filter(advocate => advocate.id !== data.advocateId));
       });
 
       // ✅ FIXED: Listen for new messages from advocates
@@ -293,7 +245,7 @@ const AdvocateChat: React.FC = () => {
               created_at: data.timestamp,
               is_read: false
             };
-
+            
             setMessages(prev => {
               // Check if message already exists to prevent duplicates
               const exists = prev.some(msg => msg.id === newMessage.id);
@@ -369,20 +321,21 @@ const AdvocateChat: React.FC = () => {
   // Wait for auth state and then fetch data
   useEffect(() => {
     console.log('🔍 Setting up auth state listener...');
-
+    
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       console.log('🔍 Auth state changed:', user ? user.email : 'No user');
-
+      
       if (user) {
         console.log('✅ User is authenticated:', user.email);
         setCurrentUser(user);
         setAuthError('');
         setAuthReady(true);
-
+        
         // Wait for token to be ready and fetch data
         setTimeout(async () => {
           await fetchAdvocates();
           await fetchConsultations();
+          await fetchChatHistory();
         }, 1000);
       } else {
         console.log('❌ User is not authenticated');
@@ -416,7 +369,7 @@ const AdvocateChat: React.FC = () => {
     try {
       setAdvocatesLoading(true);
       setError('');
-
+      
       console.log('🔄 Getting auth token...');
       const token = await getAuthToken();
       if (!token) {
@@ -441,17 +394,17 @@ const AdvocateChat: React.FC = () => {
       });
 
       console.log('📡 Response status:', response.status);
-
+      
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Response error:', errorText);
-
+        
         if (response.status === 401) {
           setAuthError('Authentication failed. Please refresh and login again.');
           await auth.signOut();
           return;
         }
-
+        
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
@@ -468,11 +421,8 @@ const AdvocateChat: React.FC = () => {
           specializations: Array.isArray(advocate.specializations) ? advocate.specializations : [],
           languages: Array.isArray(advocate.languages) ? advocate.languages : []
         }));
-
+        
         setAdvocates(processedAdvocates);
-        const translatedData = await translateAdvocateData(processedAdvocates);
-        setTranslatedAdvocates(translatedData);
-
         console.log(`✅ Successfully loaded ${processedAdvocates.length} advocates`);
       } else {
         setError(data.error || 'Failed to load advocates');
@@ -510,6 +460,33 @@ const AdvocateChat: React.FC = () => {
     }
   };
 
+  const fetchChatHistory = async () => {
+    if (!authReady || !currentUser) return;
+
+    try {
+      setChatHistoryLoading(true);
+      const token = await getAuthToken();
+      if (!token) return;
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/advocate-chat/user-chat-history`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setChatHistory(data.chatHistory);
+        console.log('✅ Chat history loaded:', data.chatHistory.length);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching user chat history:', error);
+    } finally {
+      setChatHistoryLoading(false);
+    }
+  };
+
   const fetchMessages = async (consultationId: number) => {
     try {
       const token = await getAuthToken();
@@ -536,7 +513,7 @@ const AdvocateChat: React.FC = () => {
     console.log('🚀 Starting consultation with advocate:', advocateId);
     setLoading(true);
     setError('');
-
+    
     try {
       const token = await getAuthToken();
       if (!token) {
@@ -561,9 +538,9 @@ const AdvocateChat: React.FC = () => {
 
       if (data.success && data.consultation) {
         console.log('✅ Consultation created successfully:', data.consultation);
-
+        
         await fetchConsultations();
-
+        
         const newConsultation: Consultation = {
           id: data.consultation.id,
           advocate_id: data.consultation.advocateId,
@@ -575,15 +552,15 @@ const AdvocateChat: React.FC = () => {
           chat_room_id: data.consultation.id,
           profile_photo_url: advocates.find(a => a.id === advocateId)?.profile_photo_url
         };
-
+        
         console.log('🔄 Setting active consultation and switching to chat view...');
         setActiveConsultation(newConsultation);
         setView('chat');
         setMessages([]);
-
+        
         // Fetch existing messages for this consultation
         await fetchMessages(newConsultation.id);
-
+        
         console.log('✅ Successfully transitioned to chat view');
       } else {
         console.error('❌ Consultation creation failed:', data.error);
@@ -599,17 +576,17 @@ const AdvocateChat: React.FC = () => {
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !activeConsultation || sendingMessage) {
-      console.log('❌ Cannot send message:', {
-        hasMessage: !!newMessage.trim(),
-        hasConsultation: !!activeConsultation,
-        isSending: sendingMessage
+      console.log('❌ Cannot send message:', { 
+        hasMessage: !!newMessage.trim(), 
+        hasConsultation: !!activeConsultation, 
+        isSending: sendingMessage 
       });
       return;
     }
 
     console.log('📤 Sending message:', newMessage);
     setSendingMessage(true);
-
+    
     // Stop typing indicator
     if (socketRef.current && activeConsultation) {
       socketRef.current.emit('typing-stop', {
@@ -618,7 +595,7 @@ const AdvocateChat: React.FC = () => {
         userType: 'user'
       });
     }
-
+    
     // Optimistically add the message to the UI
     const tempMessage: Message = {
       id: Date.now(),
@@ -630,7 +607,7 @@ const AdvocateChat: React.FC = () => {
       created_at: new Date().toISOString(),
       is_read: false
     };
-
+    
     const messageToSend = newMessage;
     setMessages(prev => [...prev, tempMessage]);
     setNewMessage('');
@@ -667,7 +644,7 @@ const AdvocateChat: React.FC = () => {
         console.log('✅ Message sent successfully');
         // Remove the temporary message and let the real one come through Socket.IO
         setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
-
+        
         // Fetch messages to ensure we have the latest
         setTimeout(() => {
           fetchMessages(activeConsultation.id);
@@ -697,7 +674,7 @@ const AdvocateChat: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
-
+    
     // Send typing indicator
     if (socketRef.current && activeConsultation && e.target.value.trim()) {
       socketRef.current.emit('typing-start', {
@@ -705,12 +682,12 @@ const AdvocateChat: React.FC = () => {
         userId: currentUser?.uid,
         userType: 'user'
       });
-
+      
       // Clear previous timeout
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-
+      
       // Set new timeout to stop typing indicator
       typingTimeoutRef.current = setTimeout(() => {
         if (socketRef.current) {
@@ -748,10 +725,55 @@ const AdvocateChat: React.FC = () => {
     }
   };
 
+  const handleDeleteChatHistory = async (consultationId: number) => {
+    if (!confirm('Are you sure you want to delete this chat history?')) return;
+    
+    try {
+      const token = await getAuthToken();
+      if (!token) return;
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/advocate-chat/user-chat-history/${consultationId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        setChatHistory(prev => prev.filter(ch => ch.consultation_id !== consultationId));
+        alert('Chat history deleted successfully');
+      } else {
+        alert('Failed to delete chat history: ' + data.error);
+      }
+    } catch (error) {
+      console.error('❌ Error deleting chat history:', error);
+      alert('Error deleting chat history');
+    }
+  };
+
+  const loadChatFromHistory = async (history: ChatHistory) => {
+    setActiveConsultation({
+      id: history.consultation_id,
+      advocate_id: history.advocate_id,
+      advocate_name: history.advocate_name,
+      profile_photo_url: history.advocate_photo_url,
+      consultation_type: 'chat',
+      fee_amount: history.consultation_fee,
+      status: history.consultation_status,
+      started_at: history.created_at,
+      chat_room_id: history.consultation_id
+    });
+    
+    setMessages(history.messages);
+    setView('chat');
+  };
+
   // ✅ FIXED: Load messages when switching to chat view
   useEffect(() => {
     if (view === 'chat' && activeConsultation) {
-      fetchMessages(activeConsultation.id);
+       fetchMessages(activeConsultation.id);
       const interval = setInterval(() => {
         fetchMessages(activeConsultation.id);
       }, 3000);
@@ -759,122 +781,12 @@ const AdvocateChat: React.FC = () => {
     }
   }, [view, activeConsultation]);
 
-  const advocatesToFilter = translatedAdvocates.length > 0 ? translatedAdvocates : advocates;
-
-  const filteredAdvocates = advocatesToFilter.filter(advocate =>
+  const filteredAdvocates = advocates.filter(advocate =>
     advocate.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    advocate.specializations.some(spec =>
+    advocate.specializations.some(spec => 
       spec.toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
-
-
-  // useEffect(() => {
-  //   const loadPlaceholders = async () => {
-  //     try {
-  //       const [search, typeMessage] = await Promise.all([
-  //         t("Search advocates by name or specialization..."),
-  //         t("Type your message...")
-  //       ]);
-
-  //       setPlaceholders({
-  //         search,
-  //         typeMessage
-  //       });
-  //     } catch (error) {
-  //       console.error("Placeholder translation error:", error);
-  //     }
-  //   };
-
-  //   loadPlaceholders();
-  // }, [language, t]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const translateOptions = async () => {
-      // Only proceed if we have the basic arrays
-      if (!specializations.length || !languages.length) return;
-
-      try {
-        // Translate specializations
-        const translatedSpecs = await Promise.all(
-          specializations.map(async (spec) => {
-            try {
-              const translated = await t(spec);
-              return { original: spec, translated };
-            } catch (error) {
-              console.warn(`Translation failed for ${spec}:`, error);
-              return { original: spec, translated: spec };
-            }
-          })
-        );
-
-        if (isMounted) {
-          setTranslatedSpecializations(translatedSpecs);
-        }
-
-        // Translate languages
-        const translatedLangs = await Promise.all(
-          languages.map(async (lang) => {
-            try {
-              const translated = await t(lang);
-              return { original: lang, translated };
-            } catch (error) {
-              console.warn(`Translation failed for ${lang}:`, error);
-              return { original: lang, translated: lang };
-            }
-          })
-        );
-
-        if (isMounted) {
-          setTranslatedLanguages(translatedLangs);
-        }
-
-        // Translate placeholders
-        const placeholderTranslations = await Promise.all([
-          t("Search advocates by name or specialization...").catch(() => "Search advocates by name or specialization..."),
-          t("Type your message...").catch(() => "Type your message..."),
-          t("All Specializations").catch(() => "All Specializations"),
-          t("All Languages").catch(() => "All Languages"),
-          t("Refresh").catch(() => "Refresh"),
-          t("Online Only").catch(() => "Online Only")
-        ]);
-
-        if (isMounted) {
-          setPlaceholders({
-            search: placeholderTranslations[0],
-            typeMessage: placeholderTranslations[1],
-            allSpecializations: placeholderTranslations[2],
-            allLanguages: placeholderTranslations[3],
-            refresh: placeholderTranslations[4],
-            onlineOnly: placeholderTranslations[5]
-          });
-          setTranslationsLoaded(true);
-        }
-      } catch (error) {
-        console.error("Translation error:", error);
-        if (isMounted) {
-          setTranslationsLoaded(true); // Set to true even on error to prevent infinite loading
-        }
-      }
-    };
-
-    translateOptions();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [language, t]); // IMPORTANT: Remove specializations and languages from dependencies
-
-
-  useEffect(() => {
-    if (advocates.length > 0 && language) {
-      translateAdvocateData(advocates).then(setTranslatedAdvocates);
-    }
-  }, [language, advocates, t]);
-
-
 
   const renderAdvocateCard = (advocate: Advocate) => (
     <motion.div
@@ -908,12 +820,12 @@ const AdvocateChat: React.FC = () => {
                   <span className="text-sm text-gray-600 ml-1">{formatRating(advocate.rating)}</span>
                 </div>
                 <span className="text-gray-300">•</span>
-                <span className="text-sm text-gray-600">{safeNumber(advocate.total_consultations)} <LocalizedText text="consultations" /></span>
+                <span className="text-sm text-gray-600">{safeNumber(advocate.total_consultations)} consultations</span>
               </div>
             </div>
             <div className="text-right">
               <div className="text-lg font-bold text-green-600">₹{safeNumber(advocate.consultation_fee)}</div>
-              <div className="text-xs text-gray-500"><LocalizedText text="per consultation" /></div>
+              <div className="text-xs text-gray-500">per consultation</div>
             </div>
           </div>
 
@@ -974,6 +886,84 @@ const AdvocateChat: React.FC = () => {
     </motion.div>
   );
 
+  const renderChatHistoryCard = (history: ChatHistory) => (
+    <motion.div
+      key={history.id}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-gray-100"
+    >
+      <div className="flex items-start space-x-4">
+        <div className="relative">
+          <SafeImage
+            src={history.advocate_photo_url}
+            alt={history.advocate_name}
+            className="w-16 h-16 rounded-2xl"
+            fallbackIcon={<User className="w-8 h-8 text-white" />}
+          />
+          {history.advocate_is_online && (
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full flex items-center justify-center">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">{history.advocate_name}</h3>
+              <div className="flex items-center space-x-2 mt-1">
+                <div className="flex items-center">
+                  <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                  <span className="text-sm text-gray-600 ml-1">{formatRating(history.advocate_rating)}</span>
+                </div>
+                <span className="text-gray-300">•</span>
+                <span className="text-sm text-gray-600">{history.message_count} messages</span>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className={`text-sm font-medium px-2 py-1 rounded-full ${
+                history.consultation_status === 'active' 
+                  ? 'bg-green-100 text-green-700' 
+                  : 'bg-gray-100 text-gray-700'
+              }`}>
+                {history.consultation_status}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {new Date(history.updated_at).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3">
+            {history.last_message && (
+              <p className="text-sm text-gray-600 line-clamp-2">
+                {history.last_message}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end mt-4 space-x-2">
+            <button
+              onClick={() => handleDeleteChatHistory(history.consultation_id)}
+              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              title="Delete Chat History"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => loadChatFromHistory(history)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors flex items-center space-x-1"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span><LocalizedText text="View Chat" /></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+
   const renderAdvocateList = () => (
     <div className="space-y-6">
       {/* Connection Status */}
@@ -1000,6 +990,35 @@ const AdvocateChat: React.FC = () => {
         </div>
       </div>
 
+      {/* View Tabs */}
+      <div className="bg-white rounded-2xl shadow-lg p-4">
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setView('list')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+              view === 'list' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <LocalizedText text="Find Advocates" />
+          </button>
+          <button
+            onClick={() => {
+              setView('history');
+              fetchChatHistory();
+            }}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+              view === 'history' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            <LocalizedText text="Chat History" />
+          </button>
+        </div>
+      </div>
+
       {/* Search and Filters */}
       <div className="bg-white rounded-2xl shadow-lg p-6">
         <div className="flex flex-col lg:flex-row gap-4">
@@ -1008,19 +1027,11 @@ const AdvocateChat: React.FC = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder={placeholders.search}
+                placeholder="Search advocates by name or specialization..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500"
               />
-
-              {!translationsLoaded && (
-                <div className="flex items-center justify-center py-2">
-                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
-                  <span className="text-sm text-gray-600">Loading translations...</span>
-                </div>
-              )}
-
             </div>
           </div>
           <div className="flex gap-2">
@@ -1028,38 +1039,22 @@ const AdvocateChat: React.FC = () => {
               value={filters.specialization}
               onChange={(e) => setFilters(prev => ({ ...prev, specialization: e.target.value }))}
               className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500"
-              disabled={!translationsLoaded}
             >
-              <option value="">{placeholders.allSpecializations}</option>
-              {translatedSpecializations.length > 0 ?
-                translatedSpecializations.map(spec => (
-                  <option key={spec.original} value={spec.original}>{spec.translated}</option>
-                )) :
-                specializations.map(spec => (
-                  <option key={spec} value={spec}>{spec}</option>
-                ))
-              }
+              <option value="">All Specializations</option>
+              {specializations.map(spec => (
+                <option key={spec} value={spec}>{spec}</option>
+              ))}
             </select>
-
-
             <select
               value={filters.language}
               onChange={(e) => setFilters(prev => ({ ...prev, language: e.target.value }))}
               className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500"
-              disabled={!translationsLoaded}
             >
-              <option value="">{placeholders.allLanguages}</option>
-              {translatedLanguages.length > 0 ?
-                translatedLanguages.map(lang => (
-                  <option key={lang.original} value={lang.original}>{lang.translated}</option>
-                )) :
-                languages.map(lang => (
-                  <option key={lang} value={lang}>{lang}</option>
-                ))
-              }
+              <option value="">All Languages</option>
+              {languages.map(lang => (
+                <option key={lang} value={lang}>{lang}</option>
+              ))}
             </select>
-
-
             <label className="flex items-center space-x-2 px-4 py-3 border border-gray-200 rounded-xl">
               <input
                 type="checkbox"
@@ -1067,18 +1062,16 @@ const AdvocateChat: React.FC = () => {
                 onChange={(e) => setFilters(prev => ({ ...prev, isOnline: e.target.checked }))}
                 className="rounded text-blue-600"
               />
-              <span className="text-sm">{placeholders.onlineOnly}</span>
+              <span className="text-sm">Online Only</span>
             </label>
-
             <button
               onClick={fetchAdvocates}
               disabled={advocatesLoading}
               className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center space-x-2 disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${advocatesLoading ? 'animate-spin' : ''}`} />
-              <span>{placeholders.refresh}</span>
+              <span>Refresh</span>
             </button>
-
           </div>
         </div>
       </div>
@@ -1129,14 +1122,46 @@ const AdvocateChat: React.FC = () => {
       )}
 
       {/* Advocates Grid */}
-      {!advocatesLoading && !error && !authError && (
+      {view === 'list' && !advocatesLoading && !error && !authError && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredAdvocates.map(renderAdvocateCard)}
         </div>
       )}
 
+      {/* Chat History */}
+      {view === 'history' && (
+        <div className="space-y-6">
+          <h3 className="text-xl font-semibold text-gray-800">
+            <LocalizedText text="Your Chat History" />
+          </h3>
+          
+          {chatHistoryLoading ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <h3 className="text-lg font-medium text-gray-800 mb-2">
+                <LocalizedText text="Loading chat history..." />
+              </h3>
+            </div>
+          ) : chatHistory.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-xl shadow-md">
+              <Archive className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-800 mb-2">
+                <LocalizedText text="No chat history found" />
+              </h3>
+              <p className="text-gray-600">
+                <LocalizedText text="Start a conversation with an advocate to see your chat history here" />
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6">
+              {chatHistory.map(renderChatHistoryCard)}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* No Results */}
-      {!advocatesLoading && !error && !authError && filteredAdvocates.length === 0 && (
+      {view === 'list' && !advocatesLoading && !error && !authError && filteredAdvocates.length === 0 && (
         <div className="text-center py-12">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Search className="w-8 h-8 text-gray-400" />
@@ -1216,21 +1241,23 @@ const AdvocateChat: React.FC = () => {
               className={`flex ${message.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${message.sender_type === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-800'
-                  }`}
+                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                  message.sender_type === 'user'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-800'
+                }`}
               >
                 <p className="text-sm">{message.message}</p>
-                <p className={`text-xs mt-1 ${message.sender_type === 'user' ? 'text-blue-100' : 'text-gray-500'
-                  }`}>
+                <p className={`text-xs mt-1 ${
+                  message.sender_type === 'user' ? 'text-blue-100' : 'text-gray-500'
+                }`}>
                   {new Date(message.created_at).toLocaleTimeString()}
                 </p>
               </div>
             </div>
           ))
         )}
-
+        
         {/* Typing Indicator */}
         {typingUsers.size > 0 && (
           <div className="flex justify-start">
@@ -1243,7 +1270,7 @@ const AdvocateChat: React.FC = () => {
             </div>
           </div>
         )}
-
+        
         <div ref={messagesEndRef} />
       </div>
 
@@ -1255,11 +1282,10 @@ const AdvocateChat: React.FC = () => {
             value={newMessage}
             onChange={handleInputChange}
             onKeyPress={handleKeyPress}
-            placeholder={placeholders.typeMessage}
+            placeholder="Type your message..."
             disabled={sendingMessage}
             className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           />
-
           <button
             onClick={sendMessage}
             disabled={!newMessage.trim() || sendingMessage}
@@ -1289,7 +1315,7 @@ const AdvocateChat: React.FC = () => {
           subtitle="Get instant legal advice from verified advocates"
         />
 
-        {view === 'list' && renderAdvocateList()}
+        {view === 'list' || view === 'history' ? renderAdvocateList() : null}
         {view === 'chat' && renderChat()}
 
         {/* Advocate Profile Modal */}

@@ -210,6 +210,253 @@ const generatePresignedUrl = async (s3Url) => {
   }
 };
 
+// Helper function to save/update user chat history
+const saveUserChatHistory = async (userId, consultationId, advocateId, advocateName, advocatePhotoUrl, messages) => {
+  try {
+    const lastMessage = messages.length > 0 ? messages[messages.length - 1].message : null;
+    const lastMessageTime = messages.length > 0 ? messages[messages.length - 1].created_at : null;
+    
+    // Get consultation status
+    const [consultations] = await pool.execute(
+      'SELECT status FROM consultations WHERE id = ?',
+      [consultationId]
+    );
+    
+    const consultationStatus = consultations.length > 0 ? consultations[0].status : 'active';
+    
+    // Ensure messages is properly serialized as JSON
+    let messagesJson;
+    try {
+      // If messages is already a string, check if it's valid JSON
+      if (typeof messages === 'string') {
+        // Test if it's valid JSON by parsing it
+        JSON.parse(messages);
+        messagesJson = messages;
+      } else {
+        // Otherwise stringify the object/array
+        messagesJson = JSON.stringify(messages);
+      }
+    } catch (jsonError) {
+      console.error('❌ Invalid JSON for messages, using empty array:', jsonError);
+      messagesJson = '[]';
+    }
+    
+    await pool.execute(`
+      INSERT INTO user_chat_history (
+        user_id, consultation_id, advocate_id, advocate_name, advocate_photo_url,
+        messages, last_message, last_message_time, message_count, consultation_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        messages = VALUES(messages),
+        last_message = VALUES(last_message),
+        last_message_time = VALUES(last_message_time),
+        message_count = VALUES(message_count),
+        consultation_status = VALUES(consultation_status),
+        updated_at = CURRENT_TIMESTAMP
+    `, [
+      userId, consultationId, advocateId, advocateName, advocatePhotoUrl,
+      messagesJson, lastMessage, lastMessageTime, messages.length, consultationStatus
+    ]);
+    
+    console.log('✅ User chat history saved for user:', userId, 'consultation:', consultationId);
+  } catch (error) {
+    console.error('❌ Error saving user chat history:', error);
+  }
+};
+
+// Get user's chat history
+router.get('/user-chat-history', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    if (req.user.type !== 'user') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only users can access chat history'
+      });
+    }
+
+    console.log('📚 Fetching chat history for user:', userId);
+
+    const [chatHistory] = await pool.execute(`
+      SELECT 
+        uch.*,
+        a.is_online as advocate_is_online,
+        a.rating as advocate_rating,
+        a.consultation_fee
+      FROM user_chat_history uch
+      LEFT JOIN advocates a ON uch.advocate_id = a.id
+      WHERE uch.user_id = ?
+      ORDER BY uch.updated_at DESC
+    `, [userId]);
+
+    // Generate pre-signed URLs for advocate photos
+    const historyWithPresignedUrls = await Promise.all(
+      chatHistory.map(async (chat) => {
+        try {
+          const advocatePhotoUrl = chat.advocate_photo_url 
+            ? await generatePresignedUrl(chat.advocate_photo_url)
+            : null;
+          
+          let parsedMessages = [];
+          try {
+            // Safely parse messages JSON
+            parsedMessages = typeof chat.messages === 'string' 
+              ? JSON.parse(chat.messages) 
+              : (Array.isArray(chat.messages) ? chat.messages : []);
+          } catch (parseError) {
+            console.error('❌ Error parsing messages JSON:', parseError);
+            console.log('Problem value:', chat.messages);
+            parsedMessages = [];
+          }
+
+          return {
+            ...chat,
+            advocate_photo_url: advocatePhotoUrl,
+            messages: parsedMessages
+          };
+        } catch (error) {
+          console.error('❌ Error processing chat history item:', error);
+          return {
+            ...chat,
+            advocate_photo_url: null,
+            messages: []
+          };
+        }
+      })
+    );
+
+    console.log(`✅ Retrieved ${chatHistory.length} chat histories for user:`, userId);
+
+    return res.json({
+      success: true,
+      chatHistory: historyWithPresignedUrls
+    });
+  } catch (error) {
+    console.error('❌ Error fetching user chat history:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to get chat history: ' + error.message 
+    });
+  }
+});
+
+// Get specific chat history by consultation ID
+router.get('/user-chat-history/:consultationId', authenticateUser, async (req, res) => {
+  try {
+    const { consultationId } = req.params;
+    const userId = req.user.userId;
+    
+    if (req.user.type !== 'user') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only users can access chat history'
+      });
+    }
+
+    console.log('📖 Fetching specific chat history for user:', userId, 'consultation:', consultationId);
+
+    const [chatHistory] = await pool.execute(`
+      SELECT 
+        uch.*,
+        a.is_online as advocate_is_online,
+        a.rating as advocate_rating,
+        a.consultation_fee,
+        a.full_name as advocate_full_name
+      FROM user_chat_history uch
+      LEFT JOIN advocates a ON uch.advocate_id = a.id
+      WHERE uch.user_id = ? AND uch.consultation_id = ?
+    `, [userId, consultationId]);
+
+    if (chatHistory.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Chat history not found'
+      });
+    }
+
+    const chat = chatHistory[0];
+    
+    // Generate pre-signed URL for advocate photo
+    const advocatePhotoUrl = chat.advocate_photo_url 
+      ? await generatePresignedUrl(chat.advocate_photo_url)
+      : null;
+
+    // Safely parse messages JSON
+    let parsedMessages = [];
+    try {
+      parsedMessages = typeof chat.messages === 'string' 
+        ? JSON.parse(chat.messages) 
+        : (Array.isArray(chat.messages) ? chat.messages : []);
+    } catch (parseError) {
+      console.error('❌ Error parsing messages JSON:', parseError);
+      console.log('Problem value:', chat.messages);
+      parsedMessages = [];
+    }
+
+    const result = {
+      ...chat,
+      advocate_photo_url: advocatePhotoUrl,
+      messages: parsedMessages
+    };
+
+    console.log('✅ Retrieved specific chat history for consultation:', consultationId);
+
+    return res.json({
+      success: true,
+      chatHistory: result
+    });
+  } catch (error) {
+    console.error('❌ Error fetching specific chat history:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to get chat history: ' + error.message 
+    });
+  }
+});
+
+// Delete user chat history
+router.delete('/user-chat-history/:consultationId', authenticateUser, async (req, res) => {
+  try {
+    const { consultationId } = req.params;
+    const userId = req.user.userId;
+    
+    if (req.user.type !== 'user') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only users can delete their chat history'
+      });
+    }
+
+    console.log('🗑️ Deleting chat history for user:', userId, 'consultation:', consultationId);
+
+    const [result] = await pool.execute(
+      'DELETE FROM user_chat_history WHERE user_id = ? AND consultation_id = ?',
+      [userId, consultationId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Chat history not found'
+      });
+    }
+
+    console.log('✅ Chat history deleted for consultation:', consultationId);
+
+    return res.json({
+      success: true,
+      message: 'Chat history deleted successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error deleting chat history:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to delete chat history: ' + error.message 
+    });
+  }
+});
+
 // Get available advocates with real-time status
 router.get('/advocates', authenticateUser, async (req, res) => {
   try {
@@ -477,7 +724,7 @@ router.post('/consultations/start', authenticateUser, async (req, res) => {
   }
 });
 
-// Send message with real-time delivery
+// Send message with real-time delivery and chat history saving
 router.post('/messages', authenticateUser, async (req, res) => {
   try {
     const { consultationId, message, messageType = 'text' } = req.body;
@@ -527,10 +774,37 @@ router.post('/messages', authenticateUser, async (req, res) => {
 
     console.log('✅ Chat room updated');
 
+    // Save/update user chat history if this is a user's message or advocate's reply
+    const consultation = consultations[0];
+    
+    // Get all messages for this consultation to save complete history
+    const [allMessages] = await pool.execute(`
+      SELECT * FROM chat_messages 
+      WHERE consultation_id = ?
+      ORDER BY created_at ASC
+    `, [consultationId]);
+
+    // Get advocate details for history
+    const [advocateDetails] = await pool.execute(
+      'SELECT full_name, profile_photo_url FROM advocates WHERE id = ?',
+      [consultation.advocate_id]
+    );
+
+    if (advocateDetails.length > 0) {
+      const advocate = advocateDetails[0];
+      await saveUserChatHistory(
+        consultation.user_id,
+        consultationId,
+        consultation.advocate_id,
+        advocate.full_name,
+        advocate.profile_photo_url,
+        allMessages
+      );
+    }
+
     // Emit real-time message to other party
     const io = req.app.get('io');
     if (io) {
-      const consultation = consultations[0];
       const targetId = senderType === 'user' ? consultation.advocate_id : consultation.user_id;
       const targetType = senderType === 'user' ? 'advocate' : 'user';
       
@@ -746,6 +1020,8 @@ router.patch('/consultations/:consultationId/end', authenticateUser, async (req,
       });
     }
 
+    const consultation = consultations[0];
+
     // End consultation
     await pool.execute(`
       UPDATE consultations 
@@ -760,10 +1036,33 @@ router.patch('/consultations/:consultationId/end', authenticateUser, async (req,
       WHERE consultation_id = ?
     `, [consultationId]);
 
+    // Update user chat history with final status
+    const [allMessages] = await pool.execute(`
+      SELECT * FROM chat_messages 
+      WHERE consultation_id = ?
+      ORDER BY created_at ASC
+    `, [consultationId]);
+
+    const [advocateDetails] = await pool.execute(
+      'SELECT full_name, profile_photo_url FROM advocates WHERE id = ?',
+      [consultation.advocate_id]
+    );
+
+    if (advocateDetails.length > 0) {
+      const advocate = advocateDetails[0];
+      await saveUserChatHistory(
+        consultation.user_id,
+        consultationId,
+        consultation.advocate_id,
+        advocate.full_name,
+        advocate.profile_photo_url,
+        allMessages
+      );
+    }
+
     // Emit real-time notification
     const io = req.app.get('io');
     if (io) {
-      const consultation = consultations[0];
       const targetId = req.user.type === 'user' ? consultation.advocate_id : consultation.user_id;
       const targetType = req.user.type === 'user' ? 'advocate' : 'user';
       
