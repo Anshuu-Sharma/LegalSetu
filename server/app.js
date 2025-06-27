@@ -133,36 +133,184 @@ app.use('/api/advocate-auth', advocateAuthRoutes);
 app.use('/api/advocate-chat', advocateChat);
 app.use(ttsRoute);
 
-// ✅ Production-ready admin routes for advocate management
-app.get('/admin/advocates', async (req, res) => {
+// ✅ FIXED: Delete advocate endpoint for admin (direct implementation)
+app.delete('/admin/advocates/:advocateId', async (req, res) => {
   try {
+    const { advocateId } = req.params;
     const { pool } = require('./src/config/database');
-    const [advocates] = await pool.execute(`
-      SELECT 
-        id, full_name, email, phone, bar_council_number, experience,
-        specializations, languages, consultation_fee, rating, 
-        total_consultations, is_online, status, city, state,
-        created_at, updated_at, last_seen
-      FROM advocates 
-      ORDER BY created_at DESC
-    `);
+    const { s3 } = require('./src/config/s3');
+    const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
+    
+    console.log('🗑️ Admin deleting advocate:', advocateId);
 
-    const formattedAdvocates = advocates.map(advocate => ({
-      ...advocate,
-      specializations: JSON.parse(advocate.specializations || '[]'),
-      languages: JSON.parse(advocate.languages || '[]')
-    }));
+    // Helper function to safely parse JSON
+    const safeJsonParse = (jsonString, fallback = []) => {
+      if (!jsonString || jsonString === null || jsonString === undefined || jsonString === '') {
+        return fallback;
+      }
+      if (Array.isArray(jsonString)) {
+        return jsonString;
+      }
+      if (typeof jsonString === 'string') {
+        const trimmed = jsonString.trim();
+        if (trimmed === '') return fallback;
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            return Array.isArray(parsed) ? parsed : fallback;
+          } catch (error) {
+            console.warn('⚠️ Failed to parse JSON array:', trimmed);
+            return fallback;
+          }
+        }
+        if (trimmed.includes(',')) {
+          return trimmed.split(',').map(item => item.trim().replace(/^["']|["']$/g, '')).filter(item => item.length > 0);
+        }
+        if (trimmed.length > 0) {
+          return [trimmed.replace(/^["']|["']$/g, '')];
+        }
+      }
+      return fallback;
+    };
 
-    res.json({
-      success: true,
-      count: advocates.length,
-      advocates: formattedAdvocates
+    // Helper function to delete S3 objects
+    const deleteS3Object = async (s3Url) => {
+      if (!s3Url || !s3Url.includes('amazonaws.com')) {
+        return;
+      }
+      
+      try {
+        const url = new URL(s3Url);
+        const pathParts = url.pathname.substring(1).split('/');
+        const bucket = process.env.AWS_S3_BUCKET_NAME;
+        const key = decodeURIComponent(pathParts.join('/'));
+        
+        console.log('🗑️ Deleting S3 object:', { bucket, key });
+        
+        await s3.send(new DeleteObjectCommand({
+          Bucket: bucket,
+          Key: key
+        }));
+        
+        console.log('✅ S3 object deleted successfully');
+      } catch (error) {
+        console.error('❌ Error deleting S3 object:', error);
+      }
+    };
+
+    // First, get advocate data to clean up S3 files
+    const [advocates] = await pool.execute(
+      'SELECT profile_photo_url, document_urls FROM advocates WHERE id = ?',
+      [advocateId]
+    );
+
+    if (advocates.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Advocate not found'
+      });
+    }
+
+    const advocate = advocates[0];
+    console.log('🔍 Found advocate data for cleanup:', {
+      profilePhoto: advocate.profile_photo_url,
+      documents: advocate.document_urls
     });
+
+    // Start transaction for database cleanup
+    await pool.execute('START TRANSACTION');
+
+    try {
+      // Delete related records first (foreign key constraints)
+      
+      // 1. Delete advocate reviews
+      await pool.execute('DELETE FROM advocate_reviews WHERE advocate_id = ?', [advocateId]);
+      console.log('✅ Deleted advocate reviews');
+
+      // 2. Delete advocate availability
+      await pool.execute('DELETE FROM advocate_availability WHERE advocate_id = ?', [advocateId]);
+      console.log('✅ Deleted advocate availability');
+
+      // 3. Delete wallet transactions
+      await pool.execute('DELETE FROM wallet_transactions WHERE advocate_id = ?', [advocateId]);
+      console.log('✅ Deleted wallet transactions');
+
+      // 4. Delete chat messages from consultations involving this advocate
+      await pool.execute(`
+        DELETE cm FROM chat_messages cm 
+        INNER JOIN consultations c ON cm.consultation_id = c.id 
+        WHERE c.advocate_id = ?
+      `, [advocateId]);
+      console.log('✅ Deleted chat messages');
+
+      // 5. Delete chat rooms
+      await pool.execute('DELETE FROM chat_rooms WHERE advocate_id = ?', [advocateId]);
+      console.log('✅ Deleted chat rooms');
+
+      // 6. Delete consultations
+      await pool.execute('DELETE FROM consultations WHERE advocate_id = ?', [advocateId]);
+      console.log('✅ Deleted consultations');
+
+      // 7. Finally, delete the advocate
+      const [deleteResult] = await pool.execute('DELETE FROM advocates WHERE id = ?', [advocateId]);
+      
+      if (deleteResult.affectedRows === 0) {
+        throw new Error('Failed to delete advocate record');
+      }
+
+      // Commit the transaction
+      await pool.execute('COMMIT');
+      console.log('✅ Database cleanup completed successfully');
+
+      // Clean up S3 files (do this after successful database deletion)
+      const cleanupPromises = [];
+
+      // Delete profile photo
+      if (advocate.profile_photo_url) {
+        cleanupPromises.push(deleteS3Object(advocate.profile_photo_url));
+      }
+
+      // Delete document files
+      if (advocate.document_urls) {
+        const documentUrls = safeJsonParse(advocate.document_urls, []);
+        documentUrls.forEach(docUrl => {
+          if (docUrl) {
+            cleanupPromises.push(deleteS3Object(docUrl));
+          }
+        });
+      }
+
+      // Execute all S3 cleanup operations
+      if (cleanupPromises.length > 0) {
+        console.log(`🧹 Starting S3 cleanup for ${cleanupPromises.length} files...`);
+        await Promise.allSettled(cleanupPromises);
+        console.log('✅ S3 cleanup completed');
+      }
+
+      // Broadcast advocate deletion to all connected clients
+      io.emit('advocate-deleted', {
+        advocateId: parseInt(advocateId),
+        timestamp: new Date().toISOString()
+      });
+
+      res.json({
+        success: true,
+        message: 'Advocate deleted successfully',
+        deletedAdvocateId: advocateId
+      });
+
+    } catch (dbError) {
+      // Rollback transaction on error
+      await pool.execute('ROLLBACK');
+      console.error('❌ Database error during deletion, transaction rolled back:', dbError);
+      throw dbError;
+    }
+
   } catch (error) {
-    console.error('❌ Admin get advocates error:', error);
+    console.error('❌ Admin delete advocate error:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: 'Failed to delete advocate: ' + error.message
     });
   }
 });
@@ -263,6 +411,40 @@ app.post('/admin/advocates/set-online', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Set online error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ✅ Production-ready admin routes for advocate management
+app.get('/admin/advocates', async (req, res) => {
+  try {
+    const { pool } = require('./src/config/database');
+    const [advocates] = await pool.execute(`
+      SELECT 
+        id, full_name, email, phone, bar_council_number, experience,
+        specializations, languages, consultation_fee, rating, 
+        total_consultations, is_online, status, city, state,
+        created_at, updated_at, last_seen
+      FROM advocates 
+      ORDER BY created_at DESC
+    `);
+
+    const formattedAdvocates = advocates.map(advocate => ({
+      ...advocate,
+      specializations: JSON.parse(advocate.specializations || '[]'),
+      languages: JSON.parse(advocate.languages || '[]')
+    }));
+
+    res.json({
+      success: true,
+      count: advocates.length,
+      advocates: formattedAdvocates
+    });
+  } catch (error) {
+    console.error('❌ Admin get advocates error:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -376,7 +558,8 @@ app.get('/', (req, res) => {
       'Document analysis',
       'Form filling',
       'Multi-language support',
-      'Live notifications'
+      'Live notifications',
+      'Advocate management'
     ],
     endpoints: {
       advocates: '/api/advocate-chat/advocates',
@@ -433,6 +616,7 @@ Promise.all([
     console.log(`🔍 Admin Panel: Available at /admin/advocates`);
     console.log(`📊 Real-time Stats: Available at /admin/stats`);
     console.log(`🏥 Health Check: Available at /health`);
+    console.log(`🗑️ Advocate Deletion: Available at /admin/advocates/:id (DELETE)`);
     console.log(`🌍 Production Ready: Real-time chat, notifications, and advocate management`);
   });
 }).catch((error) => {
