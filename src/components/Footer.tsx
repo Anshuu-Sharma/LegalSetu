@@ -70,7 +70,7 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
                   className="hover:underline  bg-transparent border-none p-0"
                   onClick={() => setActiveSection('advocate-chat')}
                 >
-                  <LocalizedText text="Chat with Advocates" />
+                  <LocalizedText text="AdvoTalk" />
                 </button>
               </li>
               <li>
@@ -86,7 +86,15 @@ const Footer: React.FC<FooterProps> = ({ setActiveSection }) => {
                   className="hover:underline  bg-transparent border-none p-0"
                   onClick={() => setActiveSection('advocate')}
                 >
-                  <LocalizedText text="Advocate" />
+                  <LocalizedText text="Find Advocate" />
+                </button>
+              </li>
+              <li>
+                <button
+                  className="hover:underline  bg-transparent border-none p-0"
+                  onClick={() => setActiveSection('advocate')}
+                >
+                  <LocalizedText text="Advocate Portal" />
                 </button>
               </li>
             </ul>

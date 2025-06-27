@@ -34,13 +34,13 @@ const Features: React.FC<FeaturesProps> = ({ onGetStarted }) => {
       color: 'from-green-500 to-green-600',
       bgColor: 'bg-green-50'
     },
-    {
-      icon: Search,
-      title: 'Ask Your Document',
-      description: 'Get instant answers from your document—no manual searching required.',
-      color: 'from-purple-500 to-purple-600',
-      bgColor: 'bg-purple-50'
-    },
+    // {
+    //   icon: Search,
+    //   title: 'Ask Your Document',
+    //   description: 'Get instant answers from your document—no manual searching required.',
+    //   color: 'from-purple-500 to-purple-600',
+    //   bgColor: 'bg-purple-50'
+    // },
     {
       icon: Languages,
       title: 'Multi-language Support',
@@ -55,13 +55,28 @@ const Features: React.FC<FeaturesProps> = ({ onGetStarted }) => {
       color: 'from-red-500 to-red-600',
       bgColor: 'bg-red-50'
     },
+    // {
+    //   icon: Clock,
+    //   title: '24/7 Availability',
+    //   description: 'Round-the-clock legal support whenever you need it most.',
+    //   color: 'from-indigo-500 to-indigo-600',
+    //   bgColor: 'bg-indigo-50'
+    // },
     {
-      icon: Clock,
-      title: '24/7 Availability',
-      description: 'Round-the-clock legal support whenever you need it most.',
-      color: 'from-indigo-500 to-indigo-600',
-      bgColor: 'bg-indigo-50'
+      icon: MessageSquare, // or you could use Users icon
+      title: 'Advotalk - Live Chat',
+      description: 'Connect with verified advocates for real-time legal consultations and professional advice.',
+      color: 'from-cyan-500 to-cyan-600',
+      bgColor: 'bg-cyan-50'
     },
+    {
+      icon: Search, // or you could use MapPin icon
+      title: 'Find Nearby Advocates',
+      description: 'Discover qualified lawyers within 5km radius with ratings, experience, and instant contact.',
+      color: 'from-amber-500 to-amber-600',
+      bgColor: 'bg-amber-50'
+    },
+    
     {
       icon: Mic,
       title: 'Voice Interaction',

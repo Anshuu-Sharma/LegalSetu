@@ -68,9 +68,9 @@ const Header: React.FC<HeaderProps> = ({
     { name: 'Document Analysis', id: 'documents' },
     { name: 'Constitution', id: 'cases' }, 
     { name: 'Form Assistant', id: 'forms' },
-    { name: 'Chat with Advocates', id: 'advocate-chat' },
-    { name: 'About Us', id: 'about_us' },
-    { name: 'Advocate', id: 'advocate' },
+    { name: 'AdvoTalk', id: 'advocate-chat' },
+    // { name: 'About Us', id: 'about_us' },
+    { name: 'Find Advocate', id: 'advocate' },
     { name: 'Advocate Portal', id: 'advocate-portal' }
   ];
 
