@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   User, Mail, Phone, Lock, Upload, MapPin, 
-  GraduationCap, Scale, DollarSign, FileText,
+  GraduationCap, Scale, IndianRupee, FileText,
   Eye, EyeOff, Check, AlertCircle
 } from 'lucide-react';
 import LocalizedText from './LocalizedText';
@@ -96,7 +96,7 @@ const AdvocateRegistration: React.FC = () => {
     }
 
     if (stepNumber === 2) {
-      if (!formData.barCouncilNumber.trim()) newErrors.barCouncilNumber = 'Bar Council Number is required';
+      if (!formData.barCouncilNumber.trim()) newErrors.barCouncilNumber = 'Enrollment Number is required';
       if (!formData.experience) newErrors.experience = 'Experience is required';
       if (!formData.specializations) newErrors.specializations = 'At least one specialization is required';
       if (!formData.languages) newErrors.languages = 'At least one language is required';
@@ -288,7 +288,7 @@ const AdvocateRegistration: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            <LocalizedText text="Bar Council Number" />
+            <LocalizedText text="Enrollment Number" />
           </label>
           <div className="relative">
             <Scale className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -300,7 +300,7 @@ const AdvocateRegistration: React.FC = () => {
               className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 ${
                 errors.barCouncilNumber ? 'border-red-500' : 'border-gray-200'
               }`}
-              placeholder="Enter your Bar Council Number"
+              placeholder="Enter your Enrollment Number"
             />
           </div>
           {errors.barCouncilNumber && <p className="text-red-500 text-sm mt-1">{errors.barCouncilNumber}</p>}
@@ -411,7 +411,7 @@ const AdvocateRegistration: React.FC = () => {
             <LocalizedText text="Consultation Fee (₹)" />
           </label>
           <div className="relative">
-            <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="number"
               name="consultationFee"

@@ -329,9 +329,9 @@ const AdvocateChat: React.FC = () => {
     }
   }, [filters, authReady, currentUser]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  // useEffect(() => {
+  //   messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // }, [messages]);
 
   const fetchAdvocates = async () => {
     if (!authReady || !currentUser) {
