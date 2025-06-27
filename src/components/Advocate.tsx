@@ -24,6 +24,8 @@ import {
   ArrowDownUp,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTranslation } from "../contexts/TranslationContext";
+import LocalizedText from "./LocalizedText";
 const apiUrl = import.meta.env.VITE_API_URL;
 const containerStyle = {
   width: "100%",
@@ -64,11 +66,12 @@ function getDistanceInKm(lat1: number, lon1: number, lat2: number, lon2: number)
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
+
 
 const Advocate: React.FC = () => {
   const [lawyers, setLawyers] = useState<Lawyer[]>([]);
@@ -76,19 +79,22 @@ const Advocate: React.FC = () => {
   const [error, setError] = useState("");
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [sortKey, setSortKey] = useState<string>("");
+  const [translatedLawyers, setTranslatedLawyers] = useState([]);
+  const [isTranslating, setIsTranslating] = useState(false);
   const [selectedLawyerId, setSelectedLawyerId] = useState<string | null>(null);
+  const { t, language } = useTranslation();
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
         setUserLocation({ lat: latitude, lng: longitude });
-
+  
         try {
           const res = await fetch(`${apiUrl}/api/lawyers/nearby?lat=${latitude}&lng=${longitude}`);
           if (!res.ok) throw new Error("Failed to fetch nearby lawyers");
           const data = await res.json();
-
+  
           const enriched = (data.results || []).map((lawyer: Lawyer) => {
             if (lawyer.location) {
               const distanceKm = getDistanceInKm(
@@ -109,24 +115,53 @@ const Advocate: React.FC = () => {
               _distanceValue: Number.MAX_VALUE,
             };
           });
-
+  
           setLawyers(enriched);
+          
+          // ADD THIS LINE - Translate the lawyer data
+          const translatedData = await translateLawyerData(enriched);
+          setTranslatedLawyers(translatedData);
+          
         } catch (err) {
           console.error(err);
-          setError("Failed to load nearby lawyers.");
+          t("Failed to load nearby lawyers.").then(translatedError => {
+            setError(translatedError);
+          });
         } finally {
           setLoading(false);
         }
       },
       () => {
-        setError("Location permission denied.");
-        setLoading(false);
+        t("Location permission denied.").then(translatedError => {
+          setError(translatedError);
+          setLoading(false);
+        });
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   }, []);
+  
+  useEffect(() => {
+    if (lawyers.length > 0 && language) {
+      translateLawyerData(lawyers).then(setTranslatedLawyers);
+    }
+  }, [language, t, lawyers]);
+  
 
-  const sortedLawyers = [...lawyers].sort((a, b) => {
+  useEffect(() => {
+    let isMounted = true;
+
+    // Translate error messages when language changes
+    if (error && error !== "Location permission denied." && error !== "Failed to load nearby lawyers.") {
+      t(error).then(translatedError => {
+        if (isMounted) setError(translatedError);
+      });
+    }
+
+    return () => { isMounted = false; };
+  }, [language, t, error]);
+
+  const sortedLawyers = [...(translatedLawyers.length > 0 ? translatedLawyers : lawyers)].sort((a, b) => {
     if (sortKey === "rating") {
       return (b.rating || 0) - (a.rating || 0);
     } else if (sortKey === "experience") {
@@ -140,10 +175,44 @@ const Advocate: React.FC = () => {
     }
   });
 
+  const translateLawyerData = async (lawyersData) => {
+    if (!lawyersData.length) return [];
+    
+    setIsTranslating(true);
+    
+    try {
+      const translated = await Promise.all(
+        lawyersData.map(async (lawyer) => {
+          const [translatedName, translatedAddress] = await Promise.all([
+            t(lawyer.name),
+            t(lawyer.address)
+          ]);
+          
+          return {
+            ...lawyer,
+            name: translatedName,
+            address: translatedAddress,
+            // Keep originals for reference
+            originalName: lawyer.name,
+            originalAddress: lawyer.address
+          };
+        })
+      );
+      
+      return translated;
+    } catch (error) {
+      console.error('Translation error:', error);
+      return lawyersData; // Return original data if translation fails
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+  
+
   return (
     <div className="px-4 sm:px-6 py-10 min-h-screen bg-gray-50">
       <h2 className="text-4xl font-bold text-center text-yellow-600 mb-6">
-        👩‍⚖️ Lawyers Near You
+        👩‍⚖️ <LocalizedText text="Lawyers Near You" />
       </h2>
 
       <div
@@ -166,23 +235,23 @@ const Advocate: React.FC = () => {
             {lawyers.map((lawyer) =>
               lawyer.location ? (
                 <Marker
-  key={lawyer.place_id}
-  position={lawyer.location}
-  title={lawyer.name}
-  icon={
-    selectedLawyerId === lawyer.place_id
-      ? {
-          url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
-          scaledSize: new window.google.maps.Size(40, 40),
-        }
-      : undefined
-  }
-  animation={
-    selectedLawyerId === lawyer.place_id
-      ? window.google.maps.Animation.BOUNCE
-      : undefined
-  }
-/>
+                  key={lawyer.place_id}
+                  position={lawyer.location}
+                  title={lawyer.name}
+                  icon={
+                    selectedLawyerId === lawyer.place_id
+                      ? {
+                        url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
+                        scaledSize: new window.google.maps.Size(40, 40),
+                      }
+                      : undefined
+                  }
+                  animation={
+                    selectedLawyerId === lawyer.place_id
+                      ? window.google.maps.Animation.BOUNCE
+                      : undefined
+                  }
+                />
 
               ) : null
             )}
@@ -192,7 +261,9 @@ const Advocate: React.FC = () => {
 
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <p className="text-gray-700 text-sm font-medium">
-          Found <span className="font-semibold">{lawyers.length}</span> advocates in your area.
+          <span>
+          <LocalizedText text="Found" /> {translatedLawyers.length > 0 ? translatedLawyers.length : lawyers.length} <LocalizedText text="advocates in your area." />
+          </span>
         </p>
         <div className="relative">
           <select
@@ -200,10 +271,10 @@ const Advocate: React.FC = () => {
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value)}
           >
-            <option value="">Sort By</option>
-            <option value="distance">Nearest</option>
-            <option value="rating">Top Rated</option>
-            <option value="experience">Most Experienced</option>
+            <option value=""><LocalizedText text="Sort By" /></option>
+            <option value="distance"><LocalizedText text="Nearest" /></option>
+            <option value="rating"><LocalizedText text="Top Rated" /></option>
+            <option value="experience"><LocalizedText text=" Most Experienced" /></option>
           </select>
           <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
             <ArrowDownUp size={16} />
@@ -211,10 +282,10 @@ const Advocate: React.FC = () => {
         </div>
       </div>
 
-      {loading && <p className="text-center text-gray-600">Finding lawyers around you...</p>}
-      {error && <p className="text-center text-red-500 font-medium">{error}</p>}
+      {loading && <p className="text-center text-gray-600"><LocalizedText text="Finding lawyers around you..." /></p>}
+      {error && <p className="text-center text-red-500 font-medium"><LocalizedText text={error} /></p>}
       {!loading && !error && sortedLawyers.length === 0 && (
-        <p className="text-center text-gray-500">No lawyers found nearby.</p>
+        <p className="text-center text-gray-500"><LocalizedText text="No lawyers found nearby." /></p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -226,11 +297,10 @@ const Advocate: React.FC = () => {
             transition={{ duration: 0.3, delay: index * 0.1 }}
           >
             <div
-              className={`bg-white rounded-2xl shadow-md p-5 transition-all cursor-pointer ${
-                selectedLawyerId === lawyer.place_id
-                  ? "border-2 border-yellow-500 shadow-lg"
-                  : "border border-gray-200 hover:shadow-xl"
-              }`}
+              className={`bg-white rounded-2xl shadow-md p-5 transition-all cursor-pointer ${selectedLawyerId === lawyer.place_id
+                ? "border-2 border-yellow-500 shadow-lg"
+                : "border border-gray-200 hover:shadow-xl"
+                }`}
               onClick={() => {
                 setSelectedLawyerId(lawyer.place_id);
                 document
@@ -239,31 +309,38 @@ const Advocate: React.FC = () => {
               }}
             >
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-lg font-semibold text-gray-800">{lawyer.name}</h3>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  <LocalizedText text="Name:" /> {lawyer.name}
+                </h3>
+
                 {lawyer.rating && (
                   <div className="flex items-center text-yellow-500 text-sm font-medium">
                     <Star size={16} className="mr-1" />
-                    {lawyer.rating}
+                    <LocalizedText text="Rating:" /> {lawyer.rating}
                   </div>
                 )}
+
               </div>
 
               <p className="text-sm text-gray-600 flex items-center mb-1">
                 <Gavel size={16} className="mr-2" />
-                {lawyer.experience || "Experience: N/A"}
+                <LocalizedText text="Experience:" /> {lawyer.experience || <LocalizedText text="N/A" />}
               </p>
+
 
               <p className="text-sm text-gray-600 flex items-center mb-1">
                 <MapPin size={16} className="mr-2" />
-                {lawyer.address}
+                <LocalizedText text="Address:" /> {lawyer.address}
               </p>
+
 
               {lawyer.phone && (
                 <p className="text-sm text-gray-600 flex items-center mb-1">
                   <Phone size={16} className="mr-2" />
-                  {lawyer.phone}
+                  <LocalizedText text="Phone:" /> {lawyer.phone}
                 </p>
               )}
+
 
               {lawyer.website && (
                 <a
@@ -272,7 +349,7 @@ const Advocate: React.FC = () => {
                   rel="noopener noreferrer"
                   className="text-sm text-blue-600 underline block mt-1"
                 >
-                  Visit Website
+                  <LocalizedText text="Visit Website" />
                 </a>
               )}
 
@@ -284,15 +361,16 @@ const Advocate: React.FC = () => {
                   className="text-sm text-green-600 flex items-center mt-1"
                 >
                   <Map size={16} className="mr-1" />
-                  Open in Google Maps
+                  <LocalizedText text="Open in Google Maps" />
                 </a>
               )}
 
               {lawyer.distance && (
                 <p className="text-sm text-blue-600 font-semibold mt-2">
-                  {lawyer.distance}
+                  <LocalizedText text="Distance:" /> {lawyer.distance}
                 </p>
               )}
+
             </div>
           </motion.div>
         ))}
